@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none';">
+<title>Release Knowledge Capture</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="login-screen open" id="loginScreen">
+  <div class="login-card">
+    <div class="brand-mark login-brand-mark"><span class="icon icon-white" id="loginBrandIcon"></span></div>
+    <h1>Release Knowledge Capture</h1>
+    <p class="login-sub">Sign in with your team account to continue.</p>
+
+    <label for="loginUsername">Username</label>
+    <input type="text" id="loginUsername" autocomplete="username">
+    <label for="loginPassword">Password</label>
+    <input type="password" id="loginPassword" autocomplete="current-password">
+
+    <div class="login-error" id="loginError" style="display:none;"></div>
+
+    <button class="btn btn-primary btn-block" id="loginSubmitBtn">Sign in</button>
+    <div class="login-hint">Connecting to <span id="loginServerUrl"></span></div>
+  </div>
+</div>
+
+<header>
+  <div class="brand">
+    <div class="brand-mark"><span class="icon icon-white" id="brandIcon"></span></div>
+    <div class="brand-text">
+      <span class="brand-title">Release Knowledge Capture</span>
+      <span class="brand-tag">Team Knowledge Base</span>
+    </div>
+  </div>
+
+  <div class="searchbar">
+    <span class="icon icon-muted" id="searchIcon"></span>
+    <input id="searchInput" type="text" placeholder="Search knowledge base…">
+    <span class="kbd-hint">Ctrl K</span>
+  </div>
+
+  <nav>
+    <div class="nav-tabs">
+      <a class="nav-link active" id="navDashboard">Dashboard</a>
+      <a class="nav-link" id="navKnowledgeBase">Knowledge Base</a>
+    </div>
+    <div class="nav-divider"></div>
+    <div class="nav-icon-wrap">
+      <button class="icon-btn" id="notifBtn" title="Notifications" aria-label="Notifications"></button>
+      <div class="popover" id="notifPopover">No notifications yet — this prototype doesn't track notifications.</div>
+    </div>
+    <div class="nav-icon-wrap admin-only">
+      <button class="icon-btn" id="manageUsersBtn" title="Manage Users" aria-label="Manage Users"></button>
+    </div>
+    <div class="nav-icon-wrap">
+      <button class="icon-btn" id="helpBtn" title="Help" aria-label="Help"></button>
+    </div>
+    <div class="nav-icon-wrap">
+      <button class="icon-btn" id="signOutBtn" title="Sign out" aria-label="Sign out"></button>
+    </div>
+  </nav>
+</header>
+
+<div class="banner">
+  <span class="icon icon-info"></span>
+  Shared team knowledge base — stored on the team server, not on this machine. No external AI or public cloud service is used.
+</div>
+
+<main>
+  <div class="card" id="captureCard">
+    <div class="card-head">
+      <div class="card-title">
+        <div class="icon-box"><span class="icon icon-white" id="docIcon"></span></div>
+        <div>
+          <h2>Capture New Release Issue</h2>
+          <p>Record a resolved issue to help the team and improve our knowledge base.</p>
+        </div>
+      </div>
+      <div class="ref-wrap">
+        <div class="ref" id="refLabel">REF-…</div>
+        <span class="icon icon-muted icon-sm" id="refInfoIcon" title="Auto-generated reference ID"></span>
+      </div>
+    </div>
+
+    <label>Issue Title <span class="req">*</span></label>
+    <input type="text" id="fTitle" placeholder="e.g., Release package approval blocked">
+
+    <div class="row2">
+      <div>
+        <label>Error Code</label>
+        <input type="text" id="fError" placeholder="ER-123">
+        <div class="hint">Enter error or message code if available</div>
+      </div>
+      <div>
+        <label>Applications Involved <span class="req">*</span></label>
+        <div class="apps-picker" id="appsPicker">
+          <div class="chips" id="appChips"></div>
+          <button type="button" class="apps-picker-toggle" id="appsPickerToggle">
+            <span class="icon icon-muted icon-sm chevron"></span>
+          </button>
+          <div class="apps-dropdown" id="appsDropdown"></div>
+        </div>
+      </div>
+    </div>
+
+    <label>Problem Description <span class="req">*</span></label>
+    <textarea id="fProblem" maxlength="3000" placeholder="What happened, when, and to whom?"></textarea>
+    <div class="charcount"><span id="cProblem">0</span> / 3000</div>
+
+    <div class="row2">
+      <div>
+        <label>Root Cause <span class="req">*</span></label>
+        <textarea id="fRoot" maxlength="2000"></textarea>
+        <div class="charcount"><span id="cRoot">0</span> / 2000</div>
+      </div>
+      <div>
+        <label>Resolution / Solution <span class="req">*</span></label>
+        <textarea id="fSolution" maxlength="2000"></textarea>
+        <div class="charcount"><span id="cSolution">0</span> / 2000</div>
+      </div>
+    </div>
+
+    <div class="steps-head-row">
+      <label class="no-margin">Step-by-Step Procedure <span class="req">*</span></label>
+      <button type="button" class="btn btn-outline btn-sm" id="addStepBtn">
+        <span class="icon icon-primary icon-sm" id="addStepIcon"></span> Add Step
+      </button>
+    </div>
+    <div class="steps">
+      <div class="steps-head"><div>Step</div><div>Action</div><div>Application</div><div></div></div>
+      <div id="stepsBody"></div>
+    </div>
+
+    <div class="attachments-block">
+      <label class="no-margin">Attachments <span class="optional">(Optional)</span></label>
+      <div class="hint" style="margin-bottom:10px;">Add any supporting evidence such as screenshots, logs, or error reports.</div>
+      <div class="attach-row">
+        <button type="button" class="attach-box" data-kind="screenshot">
+          <span class="icon icon-primary" id="attachScreenshotIcon"></span>
+          <div class="attach-label">Attach Screenshot</div>
+          <div class="attach-sub">PNG, JPG, GIF</div>
+        </button>
+        <button type="button" class="attach-box" data-kind="log">
+          <span class="icon icon-primary" id="attachLogIcon"></span>
+          <div class="attach-label">Attach Log File</div>
+          <div class="attach-sub">TXT, LOG</div>
+        </button>
+        <button type="button" class="attach-box" data-kind="error">
+          <span class="icon icon-primary" id="attachErrorIcon"></span>
+          <div class="attach-label">Attach Error Report</div>
+          <div class="attach-sub">PDF, DOC, ZIP</div>
+        </button>
+      </div>
+      <div class="staged-attachments" id="stagedAttachments"></div>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="submitBtn">
+        <span class="icon icon-white icon-sm" id="submitIcon"></span> Submit to Knowledge Base
+      </button>
+      <button class="btn-link" id="similarBtn">
+        <span class="icon icon-primary icon-sm" id="similarIcon"></span> Search Similar Issues
+      </button>
+      <button class="btn-link btn-link-muted" id="clearBtn">Clear form</button>
+    </div>
+  </div>
+
+  <aside>
+    <div class="card sidebar-card">
+      <div class="sidebar-head">
+        <h3>Recent Issues</h3>
+        <a id="viewAllLink">View all</a>
+      </div>
+      <div id="issueList"></div>
+      <div class="hint-box">
+        <span class="icon icon-info"></span>
+        <div>
+          <b>Can't find your issue?</b>
+          Search the knowledge base for similar solutions.
+          <button class="btn btn-outline btn-sm btn-block" id="searchKbBtn">
+            <span class="icon icon-primary icon-sm" id="searchKbIcon"></span> Search Knowledge Base
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:18px;">
+      <h3>Server connection</h3>
+      <div id="dataDirLabel" class="muted-small">loading…</div>
+    </div>
+  </aside>
+</main>
+
+<footer>Release Knowledge Capture — team desktop client. Data lives on the team server, not on this machine. No external AI or public cloud service is used.</footer>
+
+<!-- Issue detail / edit dialog -->
+<div class="modal-overlay" id="detailOverlay">
+  <div class="modal modal-lg">
+    <div class="modal-head">
+      <div class="modal-head-left">
+        <span class="issue-id" id="dId"></span>
+        <span class="status" id="dStatus"></span>
+        <span class="muted-small" id="dLockedNote" style="display:none;">Solved — only an admin can change this</span>
+      </div>
+      <div class="modal-head-actions">
+        <button class="btn btn-outline btn-sm" id="dEditBtn">
+          <span class="icon icon-primary icon-sm" id="editIcon"></span> Edit
+        </button>
+        <button class="btn btn-primary btn-sm" id="dSaveBtn" style="display:none;">
+          <span class="icon icon-white icon-sm" id="saveIcon"></span> Save Changes
+        </button>
+        <button class="btn btn-outline btn-sm" id="dCancelBtn" style="display:none;">Cancel</button>
+        <button class="modal-close" id="dCloseBtn">&times;</button>
+      </div>
+    </div>
+
+    <div class="modal-body" id="detailView">
+      <h2 id="dTitle"></h2>
+      <div class="detail-meta">
+        <span>System: <b id="dSystem"></b></span>
+        <span id="dErrorWrap">Error code: <b id="dError"></b></span>
+        <span>Recorded: <b id="dCreated"></b></span>
+      </div>
+      <div class="chips" id="dApps"></div>
+
+      <label>Problem</label>
+      <p class="detail-text" id="dProblem"></p>
+      <label>Root Cause</label>
+      <p class="detail-text" id="dRoot"></p>
+      <label>Resolution / Solution</label>
+      <p class="detail-text" id="dSolution"></p>
+
+      <label>Step-by-Step Procedure</label>
+      <ol class="detail-steps" id="dSteps"></ol>
+
+      <div id="dAttachmentsBlock" style="display:none;">
+        <label>Attachments</label>
+        <div id="dAttachments" class="attachment-list"></div>
+      </div>
+    </div>
+
+    <div class="modal-body" id="detailEdit" style="display:none;">
+      <div class="row2">
+        <div>
+          <label>Issue Title <span class="req">*</span></label>
+          <input type="text" id="eTitle">
+        </div>
+        <div>
+          <label>Status</label>
+          <select id="eStatus">
+            <option value="review">Review</option>
+            <option value="in_progress">In Progress</option>
+            <option value="critical">Critical</option>
+            <option value="cancelled">Cancelled</option>
+            <option value="solved">Solved</option>
+          </select>
+        </div>
+      </div>
+      <label>Error Code</label>
+      <input type="text" id="eError">
+
+      <label>Applications Involved <span class="req">*</span></label>
+      <div class="apps-picker" id="eAppsPicker">
+        <div class="chips" id="eAppChips"></div>
+        <button type="button" class="apps-picker-toggle" id="eAppsPickerToggle">
+          <span class="icon icon-muted icon-sm chevron"></span>
+        </button>
+        <div class="apps-dropdown" id="eAppsDropdown"></div>
+      </div>
+
+      <label>Problem Description <span class="req">*</span></label>
+      <textarea id="eProblem" maxlength="3000"></textarea>
+
+      <div class="row2">
+        <div>
+          <label>Root Cause <span class="req">*</span></label>
+          <textarea id="eRoot" maxlength="2000"></textarea>
+        </div>
+        <div>
+          <label>Resolution / Solution <span class="req">*</span></label>
+          <textarea id="eSolution" maxlength="2000"></textarea>
+        </div>
+      </div>
+
+      <div class="steps-head-row">
+        <label class="no-margin">Step-by-Step Procedure <span class="req">*</span></label>
+        <button type="button" class="btn btn-outline btn-sm" id="eAddStepBtn">+ Add Step</button>
+      </div>
+      <div class="steps">
+        <div class="steps-head"><div>Step</div><div>Action</div><div>Application</div><div></div></div>
+        <div id="eStepsBody"></div>
+      </div>
+
+      <label>Attachments</label>
+      <div id="eAttachments" class="attachment-list"></div>
+      <div class="attach-row">
+        <button type="button" class="attach-box attach-box-sm" data-kind="screenshot">
+          <span class="icon icon-primary icon-sm"></span> Screenshot
+        </button>
+        <button type="button" class="attach-box attach-box-sm" data-kind="log">
+          <span class="icon icon-primary icon-sm"></span> Log File
+        </button>
+        <button type="button" class="attach-box attach-box-sm" data-kind="error">
+          <span class="icon icon-primary icon-sm"></span> Error Report
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add application dialog -->
+<div class="modal-overlay" id="addAppOverlay">
+  <div class="modal modal-sm">
+    <div class="modal-head">
+      <h2 class="modal-title-sm">Add Application</h2>
+      <button class="modal-close" id="addAppCloseBtn">&times;</button>
+    </div>
+    <div class="modal-body">
+      <label>Application Name</label>
+      <input type="text" id="newAppInput" placeholder="e.g., Change Management System">
+      <div class="actions" style="margin-top:16px;">
+        <button class="btn btn-primary" id="addAppConfirmBtn">Add</button>
+        <button class="btn btn-secondary" id="addAppCancelBtn">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- View-all issues dialog -->
+<div class="modal-overlay" id="viewAllOverlay">
+  <div class="modal modal-lg">
+    <div class="modal-head">
+      <h2 class="modal-title-sm">All Issues</h2>
+      <button class="modal-close" id="viewAllCloseBtn">&times;</button>
+    </div>
+    <div class="modal-body" id="viewAllBody"></div>
+  </div>
+</div>
+
+<!-- Manage users dialog (admin / super admin only) -->
+<div class="modal-overlay" id="manageUsersOverlay">
+  <div class="modal modal-lg">
+    <div class="modal-head">
+      <h2 class="modal-title-sm">Manage Users</h2>
+      <button class="modal-close" id="manageUsersCloseBtn">&times;</button>
+    </div>
+    <div class="modal-body">
+      <label>Team Accounts</label>
+      <div id="userListBody" class="user-list"></div>
+
+      <label style="margin-top:20px;">Pending Password Requests</label>
+      <div id="pwRequestListBody" class="user-list"></div>
+
+      <label style="margin-top:20px;">Create Account</label>
+      <div class="row2">
+        <div>
+          <input type="text" id="nuUsername" placeholder="Username" autocomplete="off">
+        </div>
+        <div>
+          <input type="text" id="nuDisplayName" placeholder="Display name" autocomplete="off">
+        </div>
+      </div>
+      <div class="row2">
+        <div>
+          <input type="password" id="nuPassword" placeholder="Password (min 8 characters)" autocomplete="new-password">
+        </div>
+        <div>
+          <select id="nuRole"></select>
+        </div>
+      </div>
+      <div class="login-error" id="nuError" style="display:none;"></div>
+      <div class="actions" style="margin-top:16px;">
+        <button class="btn btn-primary" id="nuCreateBtn">Create Account</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Help dialog -->
+<div class="modal-overlay" id="helpOverlay">
+  <div class="modal modal-sm">
+    <div class="modal-head">
+      <h2 class="modal-title-sm">About this app</h2>
+      <button class="modal-close" id="helpCloseBtn">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p class="detail-text">Release Knowledge Capture is a shared team knowledge base. Everything you enter is stored on the team server, not on this machine — nothing is sent to any external or public AI/cloud service.</p>
+      <label>Signed in as</label>
+      <p class="detail-text muted-small" id="helpDataDir"></p>
+      <label style="margin-top:16px;">Shortcuts</label>
+      <p class="detail-text"><span class="kbd-hint">Ctrl K</span> focuses the search bar. <span class="kbd-hint">Esc</span> closes any open dialog.</p>
+
+      <label style="margin-top:16px;">Change Password</label>
+      <p class="detail-text muted-small">Requests a new password for your own account. An admin has to approve it before it takes effect.</p>
+      <input type="password" id="cpNewPassword" placeholder="New password (min 8 characters)" autocomplete="new-password" style="margin-top:8px;">
+      <input type="password" id="cpConfirmPassword" placeholder="Confirm new password" autocomplete="new-password" style="margin-top:8px;">
+      <div class="login-error" id="cpError" style="display:none;"></div>
+      <div class="login-error" id="cpSuccess" style="display:none;background:var(--green-bg);color:var(--green-fg);"></div>
+      <div class="actions" style="margin-top:12px;">
+        <button class="btn btn-primary" id="cpRequestBtn">Request Password Change</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="renderer.js"></script>
+</body>
+</html>

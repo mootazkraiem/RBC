@@ -1,0 +1,317 @@
+"""
+Local SQLite data store for Release Knowledge Capture (Phase 1 prototype).
+
+Uses Python's built-in sqlite3 module only -- no native/compiled
+dependencies, no server, no network. Data lives in a single .db file in
+the OS-standard per-user app-data directory.
+
+This is a real, on-prem-suitable storage engine (unlike a JSON file), but
+it is still a single-user local database. Before a shared pilot, this
+should be pointed at a governed, centrally managed SQL Server instance
+per the architecture assessment -- SQLite here is intentionally
+demo/single-machine, not the end-state.
+"""
+
+import json
+import os
+import shutil
+import sqlite3
+import threading
+from datetime import datetime, timezone
+from pathlib import Path
+
+SCHEMA = """
+CREATE TABLE IF NOT EXISTS issues (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    system TEXT,
+    status TEXT NOT NULL DEFAULT 'review',
+    error_code TEXT,
+    apps_json TEXT NOT NULL,
+    problem TEXT NOT NULL,
+    root_cause TEXT NOT NULL,
+    solution TEXT NOT NULL,
+    steps_json TEXT NOT NULL,
+    attachments_json TEXT NOT NULL DEFAULT '[]',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS counters (
+    name TEXT PRIMARY KEY,
+    value INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS applications (
+    name TEXT PRIMARY KEY,
+    created_at TEXT NOT NULL
+);
+"""
+
+
+def app_data_dir() -> Path:
+    """Cross-platform per-user app-data directory."""
+    if os.name == "nt":
+        base = os.environ.get("APPDATA") or str(Path.home())
+    else:
+        base = os.environ.get("XDG_DATA_HOME") or str(Path.home() / ".local" / "share")
+    d = Path(base) / "ReleaseKnowledgeCapture"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def _now() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+class IssueStore:
+    def __init__(self, db_path: Path):
+        # pywebview dispatches js_api calls on a worker thread that is not
+        # necessarily the thread IssueStore was constructed on, so the
+        # connection has to opt out of sqlite3's default same-thread check.
+        # The lock below serializes access since a single connection is
+        # still not safe for concurrent use across threads.
+        self.db_path = db_path
+        self._lock = threading.Lock()
+        self.conn = sqlite3.connect(str(db_path), check_same_thread=False)
+        self.conn.row_factory = sqlite3.Row
+        self.conn.executescript(SCHEMA)
+        # `attachments_json` was added after the original schema shipped --
+        # existing databases need the column bolted on rather than recreated.
+        existing_cols = {r["name"] for r in self.conn.execute("PRAGMA table_info(issues)")}
+        if "attachments_json" not in existing_cols:
+            self.conn.execute("ALTER TABLE issues ADD COLUMN attachments_json TEXT NOT NULL DEFAULT '[]'")
+        cur = self.conn.execute("SELECT value FROM counters WHERE name='ref'")
+        if cur.fetchone() is None:
+            self.conn.execute("INSERT INTO counters(name, value) VALUES ('ref', 1)")
+        self.conn.commit()
+
+    def _row_to_issue(self, row: sqlite3.Row) -> dict:
+        return {
+            "id": row["id"],
+            "title": row["title"],
+            "system": row["system"],
+            "status": row["status"],
+            "error": row["error_code"] or "",
+            "apps": json.loads(row["apps_json"]),
+            "problem": row["problem"],
+            "root": row["root_cause"],
+            "solution": row["solution"],
+            "steps": json.loads(row["steps_json"]),
+            "attachments": json.loads(row["attachments_json"] or "[]"),
+            "createdAt": row["created_at"],
+            "updatedAt": row["updated_at"],
+        }
+
+    def list_issues(self) -> list:
+        with self._lock:
+            cur = self.conn.execute("SELECT * FROM issues ORDER BY created_at ASC")
+            return [self._row_to_issue(r) for r in cur.fetchall()]
+
+    def next_ref_id(self) -> str:
+        with self._lock:
+            cur = self.conn.execute("SELECT value FROM counters WHERE name='ref'")
+            n = cur.fetchone()["value"]
+            return f"REF-{datetime.now().year}-{n:03d}"
+
+    def add_issue(self, issue: dict) -> dict:
+        with self._lock:
+            cur = self.conn.execute("SELECT value FROM counters WHERE name='ref'")
+            n = cur.fetchone()["value"]
+            ref_id = f"REF-{datetime.now().year}-{n:03d}"
+            now = _now()
+            self.conn.execute(
+                """INSERT INTO issues
+                   (id, title, system, status, error_code, apps_json, problem,
+                    root_cause, solution, steps_json, attachments_json, created_at, updated_at)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (
+                    ref_id,
+                    issue["title"],
+                    issue.get("system", ""),
+                    issue.get("status", "review"),
+                    issue.get("error", ""),
+                    json.dumps(issue.get("apps", [])),
+                    issue["problem"],
+                    issue["root"],
+                    issue["solution"],
+                    json.dumps(issue.get("steps", [])),
+                    "[]",
+                    now,
+                    now,
+                ),
+            )
+            self.conn.execute("UPDATE counters SET value = value + 1 WHERE name='ref'")
+            self.conn.commit()
+            return self._get_issue_locked(ref_id)
+
+    def get_issue(self, issue_id: str) -> dict | None:
+        with self._lock:
+            return self._get_issue_locked(issue_id)
+
+    def update_issue(self, issue_id: str, issue: dict) -> dict | None:
+        with self._lock:
+            if self._get_issue_locked(issue_id) is None:
+                return None
+            self.conn.execute(
+                """UPDATE issues SET
+                       title = ?, system = ?, status = ?, error_code = ?,
+                       apps_json = ?, problem = ?, root_cause = ?, solution = ?,
+                       steps_json = ?, updated_at = ?
+                   WHERE id = ?""",
+                (
+                    issue["title"],
+                    issue.get("system", ""),
+                    issue.get("status", "review"),
+                    issue.get("error", ""),
+                    json.dumps(issue.get("apps", [])),
+                    issue["problem"],
+                    issue["root"],
+                    issue["solution"],
+                    json.dumps(issue.get("steps", [])),
+                    _now(),
+                    issue_id,
+                ),
+            )
+            self.conn.commit()
+            return self._get_issue_locked(issue_id)
+
+    def _get_issue_locked(self, issue_id: str) -> dict | None:
+        cur = self.conn.execute("SELECT * FROM issues WHERE id = ?", (issue_id,))
+        row = cur.fetchone()
+        return self._row_to_issue(row) if row else None
+
+    def attachments_dir(self, issue_id: str) -> Path:
+        d = self.db_path.parent / "attachments" / issue_id
+        d.mkdir(parents=True, exist_ok=True)
+        return d
+
+    def add_attachment(self, issue_id: str, kind: str, source_path: str) -> dict | None:
+        """Copy a file the user picked (via a native file dialog) into this
+        issue's attachment folder and record it. Real storage, not a stub --
+        the file is fully owned by the local DB folder afterward."""
+        with self._lock:
+            current = self._get_issue_locked(issue_id)
+            if current is None:
+                return None
+            src = Path(source_path)
+            if not src.is_file():
+                return current
+            dest_dir = self.attachments_dir(issue_id)
+            dest_name = src.name
+            dest = dest_dir / dest_name
+            counter = 1
+            while dest.exists():
+                dest = dest_dir / f"{src.stem}({counter}){src.suffix}"
+                counter += 1
+            shutil.copy2(src, dest)
+
+            attachments = current["attachments"]
+            attachments.append({"name": dest.name, "kind": kind, "addedAt": _now()})
+            self.conn.execute(
+                "UPDATE issues SET attachments_json = ?, updated_at = ? WHERE id = ?",
+                (json.dumps(attachments), _now(), issue_id),
+            )
+            self.conn.commit()
+            return self._get_issue_locked(issue_id)
+
+    def remove_attachment(self, issue_id: str, name: str) -> dict | None:
+        with self._lock:
+            current = self._get_issue_locked(issue_id)
+            if current is None:
+                return None
+            attachments = [a for a in current["attachments"] if a["name"] != name]
+            self.conn.execute(
+                "UPDATE issues SET attachments_json = ?, updated_at = ? WHERE id = ?",
+                (json.dumps(attachments), _now(), issue_id),
+            )
+            self.conn.commit()
+            file_path = self.attachments_dir(issue_id) / name
+            if file_path.is_file():
+                file_path.unlink(missing_ok=True)
+            return self._get_issue_locked(issue_id)
+
+    def search(self, query: str) -> list:
+        query = (query or "").strip()
+        if not query:
+            return self.list_issues()
+        like = f"%{query}%"
+        with self._lock:
+            cur = self.conn.execute(
+                """SELECT * FROM issues WHERE
+                   title LIKE ? OR error_code LIKE ? OR problem LIKE ? OR
+                   root_cause LIKE ? OR solution LIKE ? OR id LIKE ? OR apps_json LIKE ?
+                   ORDER BY created_at ASC""",
+                (like, like, like, like, like, like, like),
+            )
+            return [self._row_to_issue(r) for r in cur.fetchall()]
+
+    def list_applications(self) -> list:
+        with self._lock:
+            cur = self.conn.execute("SELECT name FROM applications ORDER BY name COLLATE NOCASE ASC")
+            return [r["name"] for r in cur.fetchall()]
+
+    def add_application(self, name: str) -> list:
+        name = name.strip()
+        with self._lock:
+            self.conn.execute(
+                "INSERT OR IGNORE INTO applications (name, created_at) VALUES (?, ?)",
+                (name, _now()),
+            )
+            self.conn.commit()
+            cur = self.conn.execute("SELECT name FROM applications ORDER BY name COLLATE NOCASE ASC")
+            return [r["name"] for r in cur.fetchall()]
+
+    def delete_application(self, name: str) -> list:
+        """Remove an application from the pick list. Existing issues keep
+        referencing the name in their own apps_json (plain strings, no
+        foreign key) -- deleting here only affects future selection."""
+        with self._lock:
+            self.conn.execute("DELETE FROM applications WHERE name = ?", (name,))
+            self.conn.commit()
+            cur = self.conn.execute("SELECT name FROM applications ORDER BY name COLLATE NOCASE ASC")
+            return [r["name"] for r in cur.fetchall()]
+
+    def seed_applications_if_empty(self, names: list):
+        with self._lock:
+            cur = self.conn.execute("SELECT COUNT(*) AS c FROM applications")
+            if cur.fetchone()["c"] > 0:
+                return
+            now = _now()
+            self.conn.executemany(
+                "INSERT OR IGNORE INTO applications (name, created_at) VALUES (?, ?)",
+                [(n, now) for n in names],
+            )
+            self.conn.commit()
+
+    def seed_if_empty(self, seed_issues: list):
+        with self._lock:
+            cur = self.conn.execute("SELECT COUNT(*) AS c FROM issues")
+            if cur.fetchone()["c"] > 0:
+                return
+            for issue in seed_issues:
+                now = _now()
+                self.conn.execute(
+                    """INSERT INTO issues
+                       (id, title, system, status, error_code, apps_json, problem,
+                        root_cause, solution, steps_json, created_at, updated_at)
+                       VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    (
+                        issue["id"],
+                        issue["title"],
+                        issue.get("system", ""),
+                        issue.get("status", "review"),
+                        issue.get("error", ""),
+                        json.dumps(issue.get("apps", [])),
+                        issue["problem"],
+                        issue["root"],
+                        issue["solution"],
+                        json.dumps(issue.get("steps", [])),
+                        now,
+                        now,
+                    ),
+                )
+            self.conn.execute(
+                "UPDATE counters SET value = ? WHERE name='ref'", (len(seed_issues) + 1,)
+            )
+            self.conn.commit()
