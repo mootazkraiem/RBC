@@ -185,11 +185,15 @@ deliberately left inert rather than faked:
 - Login is username/password issued manually by whoever runs the server —
   no AD/SSO integration yet. Worth revisiting if Capgemini's AD becomes
   reachable from wherever the server runs.
-- No password reset/change flow anywhere (API or CLI) — fixing a broken
-  or forgotten password today means editing the database directly with
-  the server's own `hash_password()` function. Worth adding a real
-  `create_user.py --reset-password <user>` path before this scales past a
-  pilot with a handful of admins fixing things by hand.
+- Password changes go through an in-app self-request + admin-approval
+  flow (`POST /auth/password-change-request`, reviewed via `GET
+  /password-requests`) — but that still requires being able to log in
+  with the old password first. Someone fully locked out (forgot their
+  password entirely) still needs an admin to fix it directly via the
+  database's `hash_password()` function. Worth adding a real
+  `create_user.py --reset-password <user>` path for that case before
+  this scales past a pilot with a handful of admins fixing things by
+  hand.
 - No SQL Server/Postgres migration yet — SQLite behind the API server
   handles this team's scale comfortably, but the API layer is the seam to
   swap the storage engine later without touching the client.
