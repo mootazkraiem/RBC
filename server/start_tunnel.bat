@@ -13,4 +13,4 @@ REM tunnel with a fixed hostname -- see:
 REM https://developers.cloudflare.com/cloudflare-one/connections/connect-apps
 REM Once that's done this script's --url quick-tunnel invocation goes away
 REM in favor of `cloudflared tunnel run <name>`.
-cloudflared tunnel --url https://localhost:8443 --no-tls-verify
+cloudflared tunnel --url https://localhost:8443 --no-tls-verify >> "%~dp0tunnel.log" 2>&1
