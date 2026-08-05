@@ -1,11 +1,17 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+from pathlib import Path
+
+import certifi
+
+
+certifi_bundle = (certifi.where(), str(Path("certifi")))
 
 a = Analysis(
     ['app.py'],
     pathex=[],
     binaries=[],
-    datas=[('ui', 'ui')],
+    datas=[('ui', 'ui'), certifi_bundle],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
