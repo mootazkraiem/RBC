@@ -24,8 +24,6 @@ import json
 import sys
 from pathlib import Path
 
-import certifi
-
 # When packaged with PyInstaller (sys.frozen), __file__ points inside the
 # bundle, not next to the .exe -- config.json has to live next to the .exe
 # so each teammate can edit it without touching the bundle. Running from
@@ -66,4 +64,4 @@ def verify_option(config: dict):
         full_path = APP_DIR / cert_path
         if full_path.is_file():
             return str(full_path)
-    return certifi.where()
+    return True
