@@ -61,6 +61,7 @@ let currentDetailIssue = null;
 let editApps = [];          // edit-dialog selected applications
 let currentRole = "technician";  // "technician" | "admin" | "super_admin" -- server enforces the real check
 let currentUsername = null;
+let _searchSeq = 0;              // guards against a slow, stale search response overwriting a newer one
 function isAdminOrAbove(){ return currentRole === "admin" || currentRole === "super_admin"; }
 
 const NEW_APP_SENTINEL = "__new__";
@@ -312,9 +313,11 @@ function renderAttachmentList(container, attachments, issueId, removable){
 /* ============================== issue list ============================== */
 async function renderList(query){
   const list = document.getElementById("issueList");
+  const mySeq = ++_searchSeq;
   const items = (query && query.trim())
     ? await api().search_issues(query)
     : await api().list_issues();
+  if(mySeq !== _searchSeq) return []; // a newer keystroke's request has already superseded this one
   if(items && items.apiError){
     if(items.needsLogin) showLoginScreen(items.apiError);
     renderIssueCards(list, [], items.apiError);
@@ -764,7 +767,12 @@ function wireEvents(){
   });
   document.getElementById("searchKbBtn").addEventListener("click", () => document.getElementById("searchInput").focus());
 
-  document.getElementById("searchInput").addEventListener("input", e => renderList(e.target.value));
+  let searchDebounceTimer = null;
+  document.getElementById("searchInput").addEventListener("input", e => {
+    const query = e.target.value;
+    clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = setTimeout(() => renderList(query), 250);
+  });
   document.getElementById("navKnowledgeBase").addEventListener("click", () => document.getElementById("searchInput").focus());
 
   document.getElementById("viewAllLink").addEventListener("click", openViewAll);
