@@ -87,7 +87,19 @@ function formatDate(iso){
 function api(){ return window.pywebview.api; }
 function whenReady(fn){
   if (window.pywebview && window.pywebview.api) { fn(); return; }
-  window.addEventListener("pywebviewready", fn, { once: true });
+  let started = false;
+  const start = () => { if(started) return; started = true; fn(); };
+  window.addEventListener("pywebviewready", start, { once: true });
+  // Fallback: pywebviewready doesn't fire reliably on every pywebview
+  // version/platform -- without this, a missed event means init() never
+  // runs and the whole app hangs forever with no error, indistinguishable
+  // from a freeze. Poll as a safety net so it always eventually starts.
+  const pollId = setInterval(() => {
+    if (window.pywebview && window.pywebview.api) {
+      clearInterval(pollId);
+      start();
+    }
+  }, 100);
 }
 
 /* ========================= applications picker ========================= */
