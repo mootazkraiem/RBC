@@ -175,7 +175,7 @@ def main():
         min_size=(1080, 720),
         maximized=True,
     )
-    api.window = window  # needed for native file-picker dialogs
+    api._window = window  # needed for native file-picker dialogs
     webview.start(debug=False)
 
 

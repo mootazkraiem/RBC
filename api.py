@@ -32,7 +32,19 @@ class Api:
         self.config = load_config()
         self.base_url = self.config["server_url"].rstrip("/")
         self.verify = verify_option(self.config)
-        self.window = None  # set by app.py once the pywebview window exists
+        # Leading underscore is load-bearing, not style: pywebview's JS-API
+        # generator walks every *public* attribute on this object via dir()
+        # to build window.pywebview.api, recursing into any non-callable
+        # attribute it finds. A public `window` attribute here gets walked
+        # straight into the real native Window -> its native .NET Form ->
+        # Form.AccessibilityObject.Bounds, a System.Drawing.Rectangle whose
+        # .Empty property returns a *new* Rectangle wrapper object on every
+        # access (pythonnet mints a fresh wrapper per value-type read) --
+        # which defeats pywebview's id()-based cycle guard and recurses
+        # until Python's recursion limit blows up. That's a confirmed,
+        # reproducible cause of this app hanging/freezing on startup.
+        # Underscore-prefixed attributes are skipped by that walk entirely.
+        self._window = None  # set by app.py once the pywebview window exists
         self._token = None
         self._username = None
         self._display_name = None
@@ -183,9 +195,9 @@ class Api:
         """Open a native OS file picker and return the chosen path, or None.
         Purely local -- no network call, the file never leaves this machine
         until add_attachment explicitly uploads it."""
-        if self.window is None:
+        if self._window is None:
             return None
-        result = self.window.create_file_dialog(webview.OPEN_DIALOG, allow_multiple=False)
+        result = self._window.create_file_dialog(webview.OPEN_DIALOG, allow_multiple=False)
         if not result:
             return None
         return result[0]
