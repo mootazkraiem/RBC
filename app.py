@@ -93,7 +93,74 @@ def _autostart_local_server_if_needed(config):
     print("[app] Warning: local server did not respond in time; continuing anyway.", flush=True)
 
 
+def _kill_webview2_children_if_this_process_dies():
+    """Windows only: put this process in a Job Object with
+    JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE, so the WebView2 helper processes
+    this app spawns get torn down automatically the moment this process
+    exits -- cleanly *or* force-killed (Task Manager, a crash, anything).
+
+    Without this, force-killing the app (which is how it keeps getting
+    closed in practice) orphans several msedgewebview2.exe helper
+    processes that never get cleaned up. Confirmed by hand: a dozen of
+    them were found still running from unrelated earlier sessions,
+    accumulating memory pressure across repeated relaunches -- and that
+    resource pressure is what made later launches intermittently hang.
+    """
+    if os.name != "nt":
+        return
+    try:
+        import ctypes
+        from ctypes import wintypes
+
+        class _BASIC_LIMITS(ctypes.Structure):
+            _fields_ = [
+                ("PerProcessUserTimeLimit", ctypes.c_int64),
+                ("PerJobUserTimeLimit", ctypes.c_int64),
+                ("LimitFlags", wintypes.DWORD),
+                ("MinimumWorkingSetSize", ctypes.c_size_t),
+                ("MaximumWorkingSetSize", ctypes.c_size_t),
+                ("ActiveProcessLimit", wintypes.DWORD),
+                ("Affinity", ctypes.c_size_t),
+                ("PriorityClass", wintypes.DWORD),
+                ("SchedulingClass", wintypes.DWORD),
+            ]
+
+        class _IO_COUNTERS(ctypes.Structure):
+            _fields_ = [(n, ctypes.c_uint64) for n in (
+                "ReadOperationCount", "WriteOperationCount", "OtherOperationCount",
+                "ReadTransferCount", "WriteTransferCount", "OtherTransferCount")]
+
+        class _EXTENDED_LIMITS(ctypes.Structure):
+            _fields_ = [
+                ("BasicLimitInformation", _BASIC_LIMITS),
+                ("IoInfo", _IO_COUNTERS),
+                ("ProcessMemoryLimit", ctypes.c_size_t),
+                ("JobMemoryLimit", ctypes.c_size_t),
+                ("PeakProcessMemoryUsed", ctypes.c_size_t),
+                ("PeakJobMemoryUsed", ctypes.c_size_t),
+            ]
+
+        JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE = 0x2000
+        JobObjectExtendedLimitInformation = 9
+
+        kernel32 = ctypes.windll.kernel32
+        job = kernel32.CreateJobObjectW(None, None)
+        if not job:
+            return
+        info = _EXTENDED_LIMITS()
+        info.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+        kernel32.SetInformationJobObject(
+            job, JobObjectExtendedLimitInformation, ctypes.byref(info), ctypes.sizeof(info)
+        )
+        kernel32.AssignProcessToJobObject(job, kernel32.GetCurrentProcess())
+        global _job_handle
+        _job_handle = job  # keep referenced for the life of the process
+    except OSError:
+        pass  # best-effort only -- must never block startup
+
+
 def main():
+    _kill_webview2_children_if_this_process_dies()
     config = load_config()
     _autostart_local_server_if_needed(config)
 
