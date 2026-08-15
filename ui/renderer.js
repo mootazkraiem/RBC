@@ -419,11 +419,39 @@ async function openManageUsers(){
 /* ============================== notifications ============================== */
 /* Two kinds, like Teams/Facebook: pending password requests are a to-do
    that persists (badge-worthy) until actually resolved via Approve/Reject
-   -- not just "seen". New issues a teammate posted, and your own request
-   getting resolved, are FYI -- the server only ever returns ones newer
-   than your last-seen timestamp, so anything present here is by
-   definition unread; opening the popover marks them seen server-side. */
-let _lastNotifications = { pending: [], newIssues: [], resolvedRequests: [] };
+   -- not just "seen". New issues a teammate posted, your own request
+   getting resolved, and direct events (e.g. an admin changed your issue's
+   status) are FYI -- the server only ever returns ones newer than your
+   last-seen timestamp, so anything present here is by definition unread;
+   opening the popover marks them seen server-side.
+
+   Popups (toasts) fire the moment a poll notices something genuinely new
+   -- same idea as Teams/FB. Sound is intentionally not wired up yet. */
+let _lastNotifications = { pending: [], newIssues: [], resolvedRequests: [], direct: [] };
+let _toastedKeys = new Set();   // dedup so the same item doesn't toast on every 30s poll
+let _notifsInitialized = false; // don't toast-flood everything already sitting there on first load
+
+function showToast(title, body, onClick){
+  const container = document.getElementById("toastContainer");
+  const el = document.createElement("div");
+  el.className = "toast";
+  el.innerHTML = `<b>${escapeHtml(title)}</b><div class="toast-body">${escapeHtml(body)}</div>`;
+  if(onClick) el.addEventListener("click", onClick);
+  container.appendChild(el);
+  setTimeout(() => {
+    el.classList.add("toast-out");
+    setTimeout(() => el.remove(), 200);
+  }, 6000);
+}
+
+function toastNewItems(items, keyPrefix, keyFn, titleFn, bodyFn, onClick){
+  items.forEach(item => {
+    const key = `${keyPrefix}:${keyFn(item)}`;
+    if(_toastedKeys.has(key)) return;
+    _toastedKeys.add(key);
+    showToast(titleFn(item), bodyFn(item), onClick ? () => onClick(item) : null);
+  });
+}
 
 async function refreshNotifications(){
   const badge = document.getElementById("notifBadge");
@@ -436,8 +464,24 @@ async function refreshNotifications(){
     pending: data.pendingPasswordRequests || [],
     newIssues: data.newIssues || [],
     resolvedRequests: data.myResolvedRequests || [],
+    direct: data.direct || [],
   };
-  const total = _lastNotifications.pending.length + _lastNotifications.newIssues.length + _lastNotifications.resolvedRequests.length;
+  if(_notifsInitialized){
+    toastNewItems(_lastNotifications.pending, "pending", r => r.id,
+      () => "Password request", r => `${r.username} requested a password change`,
+      () => { document.getElementById("notifPopover").classList.remove("open"); openManageUsers(); });
+    toastNewItems(_lastNotifications.newIssues, "issue", i => i.id,
+      () => "New in the knowledge base", i => `${i.created_by} added "${i.title}"`,
+      i => { document.getElementById("notifPopover").classList.remove("open"); openDetail(i.id); });
+    toastNewItems(_lastNotifications.resolvedRequests, "resolved", r => r.id,
+      () => "Your account", r => `Your password change was ${r.status}`);
+    toastNewItems(_lastNotifications.direct, "direct", n => n.id,
+      () => "Update", n => n.message,
+      n.issue_id ? (n => { document.getElementById("notifPopover").classList.remove("open"); openDetail(n.issue_id); }) : null);
+  }
+  _notifsInitialized = true;
+  const total = _lastNotifications.pending.length + _lastNotifications.newIssues.length +
+    _lastNotifications.resolvedRequests.length + _lastNotifications.direct.length;
   if(total === 0){
     badge.style.display = "none";
   } else {
@@ -448,13 +492,20 @@ async function refreshNotifications(){
 
 function renderNotificationPopover(){
   const pop = document.getElementById("notifPopover");
-  const { pending, newIssues, resolvedRequests } = _lastNotifications;
+  const { pending, newIssues, resolvedRequests, direct } = _lastNotifications;
   const sections = [];
   if(pending.length){
     sections.push('<div class="notif-section-label">Needs your review</div>' + pending.map(r => `
       <button type="button" class="notif-item" data-open-manage-users="1">
         <b>${escapeHtml(r.username)}</b> requested a password change
         <div class="muted-small">${formatDate(r.requested_at)}</div>
+      </button>`).join(""));
+  }
+  if(direct.length){
+    sections.push('<div class="notif-section-label">Updates</div>' + direct.map(n => `
+      <button type="button" class="notif-item" ${n.issue_id ? `data-open-issue="${escapeAttr(n.issue_id)}"` : ""}>
+        ${escapeHtml(n.message)}
+        <div class="muted-small">${formatDate(n.created_at)}</div>
       </button>`).join(""));
   }
   if(newIssues.length){
