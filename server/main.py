@@ -200,6 +200,22 @@ def health():
     return {"ok": True}
 
 
+# ------------------------------------------------------------ notifications
+@app.get("/notifications")
+def get_notifications(user: str = Depends(get_current_user)):
+    result = store.list_notifications(user)
+    result["pendingPasswordRequests"] = (
+        store.list_password_requests(status="pending") if _user_role(user) in ("admin", "super_admin") else []
+    )
+    return result
+
+
+@app.post("/notifications/seen")
+def mark_notifications_seen(user: str = Depends(get_current_user)):
+    store.mark_notifications_seen(user)
+    return {"ok": True}
+
+
 # ----------------------------------------------------------------- issues
 class IssueIn(BaseModel):
     title: str

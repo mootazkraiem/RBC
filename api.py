@@ -119,6 +119,15 @@ class Api:
         return {"serverUrl": self.base_url, "username": self._username,
                 "displayName": self._display_name, "role": self._role}
 
+    # ------------------------------------------------------ notifications
+    def get_notifications(self):
+        resp, err = self._request("GET", "/notifications")
+        return err if err else resp.json()
+
+    def mark_notifications_seen(self):
+        resp, err = self._request("POST", "/notifications/seen")
+        return err if err else resp.json()
+
     # ------------------------------------------------------------- users
     def list_users(self):
         resp, err = self._request("GET", "/users")

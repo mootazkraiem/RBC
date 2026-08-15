@@ -96,6 +96,11 @@ CREATE TABLE IF NOT EXISTS password_requests (
     reviewed_by TEXT,
     reviewed_at TEXT
 );
+
+CREATE TABLE IF NOT EXISTS notification_state (
+    username TEXT PRIMARY KEY,
+    last_seen_at TEXT NOT NULL
+);
 """
 
 
@@ -627,3 +632,56 @@ class IssueStore:
                 (issue_id,),
             )
             return [dict(r) for r in cur.fetchall()]
+
+    # ------------------------------------------------------- notifications
+    # Two kinds, deliberately handled differently -- same split Teams/FB
+    # use: "to-do" items (pending password requests) persist until resolved
+    # and always show regardless of read state; "FYI" items (a new issue a
+    # teammate posted, your own request getting resolved) clear once seen.
+    def _get_or_init_last_seen(self, username: str) -> str:
+        with self._lock:
+            row = self.conn.execute(
+                "SELECT last_seen_at FROM notification_state WHERE username = ?", (username,)
+            ).fetchone()
+            if row:
+                return row["last_seen_at"]
+            # First time this user's notifications are ever checked --
+            # baseline to now rather than flooding them with the entire
+            # history of the knowledge base as "unread."
+            now = _now()
+            self.conn.execute(
+                "INSERT INTO notification_state (username, last_seen_at) VALUES (?, ?)",
+                (username, now),
+            )
+            self.conn.commit()
+            return now
+
+    def mark_notifications_seen(self, username: str) -> None:
+        with self._lock:
+            now = _now()
+            self.conn.execute(
+                "INSERT INTO notification_state (username, last_seen_at) VALUES (?, ?) "
+                "ON CONFLICT(username) DO UPDATE SET last_seen_at = excluded.last_seen_at",
+                (username, now),
+            )
+            self.conn.commit()
+
+    def list_notifications(self, username: str) -> dict:
+        last_seen = self._get_or_init_last_seen(username)
+        with self._lock:
+            new_issues = self.conn.execute(
+                "SELECT id, title, created_by, created_at FROM issues "
+                "WHERE created_by != ? AND created_at > ? ORDER BY created_at DESC LIMIT 20",
+                (username, last_seen),
+            ).fetchall()
+            my_resolved_requests = self.conn.execute(
+                "SELECT id, status, reviewed_at FROM password_requests "
+                "WHERE username = ? AND status != 'pending' AND reviewed_at > ? "
+                "ORDER BY reviewed_at DESC",
+                (username, last_seen),
+            ).fetchall()
+        return {
+            "lastSeenAt": last_seen,
+            "newIssues": [dict(r) for r in new_issues],
+            "myResolvedRequests": [dict(r) for r in my_resolved_requests],
+        }

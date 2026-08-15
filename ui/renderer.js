@@ -62,6 +62,7 @@ let editApps = [];          // edit-dialog selected applications
 let currentRole = "technician";  // "technician" | "admin" | "super_admin" -- server enforces the real check
 let currentUsername = null;
 let _searchSeq = 0;              // guards against a slow, stale search response overwriting a newer one
+let _notifPollId = null;         // setInterval handle for live notification polling, cleared on logout
 function isAdminOrAbove(){ return currentRole === "admin" || currentRole === "super_admin"; }
 
 const NEW_APP_SENTINEL = "__new__";
@@ -416,37 +417,66 @@ async function openManageUsers(){
 }
 
 /* ============================== notifications ============================== */
-/* Scoped deliberately: the only real, already-modeled "needs attention"
-   signal in this app today is a pending password-change request, which is
-   already admin/super_admin-only server-side. Reuses list_password_requests
-   -- no new backend endpoint needed for this part. */
+/* Two kinds, like Teams/Facebook: pending password requests are a to-do
+   that persists (badge-worthy) until actually resolved via Approve/Reject
+   -- not just "seen". New issues a teammate posted, and your own request
+   getting resolved, are FYI -- the server only ever returns ones newer
+   than your last-seen timestamp, so anything present here is by
+   definition unread; opening the popover marks them seen server-side. */
+let _lastNotifications = { pending: [], newIssues: [], resolvedRequests: [] };
+
 async function refreshNotifications(){
   const badge = document.getElementById("notifBadge");
+  const data = await api().get_notifications();
+  if(!data || data.apiError){
+    badge.style.display = "none";
+    return;
+  }
+  _lastNotifications = {
+    pending: data.pendingPasswordRequests || [],
+    newIssues: data.newIssues || [],
+    resolvedRequests: data.myResolvedRequests || [],
+  };
+  const total = _lastNotifications.pending.length + _lastNotifications.newIssues.length + _lastNotifications.resolvedRequests.length;
+  if(total === 0){
+    badge.style.display = "none";
+  } else {
+    badge.textContent = total > 9 ? "9+" : String(total);
+    badge.style.display = "";
+  }
+}
+
+function renderNotificationPopover(){
   const pop = document.getElementById("notifPopover");
-  if(!isAdminOrAbove()){
-    badge.style.display = "none";
-    pop.innerHTML = '<div class="notif-empty muted-small">No notifications.</div>';
-    return;
+  const { pending, newIssues, resolvedRequests } = _lastNotifications;
+  const sections = [];
+  if(pending.length){
+    sections.push('<div class="notif-section-label">Needs your review</div>' + pending.map(r => `
+      <button type="button" class="notif-item" data-open-manage-users="1">
+        <b>${escapeHtml(r.username)}</b> requested a password change
+        <div class="muted-small">${formatDate(r.requested_at)}</div>
+      </button>`).join(""));
   }
-  const requests = await api().list_password_requests();
-  if(!requests || requests.apiError || requests.length === 0){
-    badge.style.display = "none";
-    pop.innerHTML = '<div class="notif-empty muted-small">No notifications.</div>';
-    return;
+  if(newIssues.length){
+    sections.push('<div class="notif-section-label">New in the knowledge base</div>' + newIssues.map(i => `
+      <button type="button" class="notif-item" data-open-issue="${escapeAttr(i.id)}">
+        <b>${escapeHtml(i.created_by)}</b> added "${escapeHtml(i.title)}"
+        <div class="muted-small">${formatDate(i.created_at)}</div>
+      </button>`).join(""));
   }
-  badge.textContent = requests.length > 9 ? "9+" : String(requests.length);
-  badge.style.display = "";
-  pop.innerHTML = requests.map(r => `
-    <button type="button" class="notif-item" data-req="${r.id}">
-      <b>${escapeHtml(r.username)}</b> requested a password change
-      <div class="muted-small">${formatDate(r.requested_at)}</div>
-    </button>
-  `).join("");
-  pop.querySelectorAll(".notif-item").forEach(btn => {
-    btn.addEventListener("click", () => {
-      pop.classList.remove("open");
-      openManageUsers();
-    });
+  if(resolvedRequests.length){
+    sections.push('<div class="notif-section-label">Your account</div>' + resolvedRequests.map(r => `
+      <div class="notif-item">
+        Your password change was ${escapeHtml(r.status)}
+        <div class="muted-small">${formatDate(r.reviewed_at)}</div>
+      </div>`).join(""));
+  }
+  pop.innerHTML = sections.length ? sections.join("") : '<div class="notif-empty muted-small">No notifications.</div>';
+  pop.querySelectorAll("[data-open-manage-users]").forEach(btn => {
+    btn.addEventListener("click", () => { pop.classList.remove("open"); openManageUsers(); });
+  });
+  pop.querySelectorAll("[data-open-issue]").forEach(btn => {
+    btn.addEventListener("click", () => { pop.classList.remove("open"); openDetail(btn.getAttribute("data-open-issue")); });
   });
 }
 
@@ -870,7 +900,17 @@ function wireEvents(){
     e.stopPropagation();
     const opening = !notifPop.classList.contains("open");
     notifPop.classList.toggle("open");
-    if(opening) await refreshNotifications();
+    if(opening){
+      renderNotificationPopover(); // show current (possibly slightly stale) data instantly
+      await refreshNotifications();
+      renderNotificationPopover(); // then refresh with the latest
+      // Only the FYI items (new issues, resolved requests) are "seen" by
+      // opening this -- pending password requests stay badge-worthy until
+      // actually approved/rejected, so this doesn't touch that count.
+      if(_lastNotifications.newIssues.length || _lastNotifications.resolvedRequests.length){
+        await api().mark_notifications_seen();
+      }
+    }
   });
   document.addEventListener("click", () => notifPop.classList.remove("open"));
 
@@ -888,6 +928,7 @@ function wireEvents(){
   document.getElementById("cpRequestBtn").addEventListener("click", submitPasswordChangeRequest);
 
   document.getElementById("signOutBtn").addEventListener("click", async () => {
+    if(_notifPollId){ clearInterval(_notifPollId); _notifPollId = null; }
     await api().logout();
     showLoginScreen();
   });
@@ -975,6 +1016,8 @@ async function completeInit(){
   document.getElementById("dataDirLabel").textContent =
     `Signed in as ${info.displayName || info.username}\n${info.serverUrl}`;
   await refreshNotifications();
+  if(_notifPollId) clearInterval(_notifPollId);
+  _notifPollId = setInterval(refreshNotifications, 30000); // live-feeling badge, Teams/FB-style
 }
 
 async function init(){
