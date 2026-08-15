@@ -872,27 +872,39 @@ async function submitIssue(status){
     alert("Please fill in the required fields (title, at least one application, problem, root cause, solution, and at least one step) before submitting.");
     return;
   }
-  const result = await api().add_issue({
-    title: f.title, system: currentApps[0], status, error: f.error,
-    apps: currentApps.slice(), problem: f.problem, root: f.root, solution: f.solution,
-    steps: f.steps,
-  });
-  if(result && result.apiError){
-    if(result.needsLogin) showLoginScreen(result.apiError);
-    else alert(result.apiError);
-    return;
-  }
-  // Attachments are uploaded one by one after creation -- the server can't
-  // read a path on the client's disk, so each staged file's bytes have to
-  // be sent up explicitly now that we have a real issue id to attach to.
-  for(const staged of stagedAttachments){
-    const attachResult = await api().add_attachment(result.id, staged.kind, staged.path);
-    if(attachResult && attachResult.apiError){
-      alert(`"${result.id}" was saved, but attaching "${staged.name}" failed: ${attachResult.apiError}`);
+  // Without this guard, clicking (or double-clicking on a slow connection)
+  // Submit more than once fires a separate POST per click, each creating
+  // its own duplicate issue with its own REF-ID -- confirmed happening in
+  // practice, not theoretical. Same disable-while-in-flight pattern as
+  // attemptLogin() already uses for the same reason.
+  const btn = document.getElementById("submitBtn");
+  if(btn.disabled) return;
+  btn.disabled = true;
+  try {
+    const result = await api().add_issue({
+      title: f.title, system: currentApps[0], status, error: f.error,
+      apps: currentApps.slice(), problem: f.problem, root: f.root, solution: f.solution,
+      steps: f.steps,
+    });
+    if(result && result.apiError){
+      if(result.needsLogin) showLoginScreen(result.apiError);
+      else alert(result.apiError);
+      return;
     }
+    // Attachments are uploaded one by one after creation -- the server can't
+    // read a path on the client's disk, so each staged file's bytes have to
+    // be sent up explicitly now that we have a real issue id to attach to.
+    for(const staged of stagedAttachments){
+      const attachResult = await api().add_attachment(result.id, staged.kind, staged.path);
+      if(attachResult && attachResult.apiError){
+        alert(`"${result.id}" was saved, but attaching "${staged.name}" failed: ${attachResult.apiError}`);
+      }
+    }
+    await renderList(document.getElementById("searchInput").value);
+    await clearForm();
+  } finally {
+    btn.disabled = false;
   }
-  await renderList(document.getElementById("searchInput").value);
-  await clearForm();
 }
 
 /* ============================== wiring ============================== */
