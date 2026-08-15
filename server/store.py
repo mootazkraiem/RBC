@@ -613,3 +613,17 @@ class IssueStore:
                 "SELECT * FROM audit_log ORDER BY id DESC LIMIT ?", (limit,)
             )
             return [dict(r) for r in cur.fetchall()]
+
+    def list_issue_history(self, issue_id: str) -> list:
+        """Who touched this specific issue and when -- every create, edit,
+        and attachment change, newest first. Open to any signed-in user
+        (not admin-only like the full /audit log), since knowing who wrote
+        what on a shared knowledge-base entry is exactly the kind of thing
+        the whole team benefits from seeing, not just admins."""
+        with self._lock:
+            cur = self.conn.execute(
+                "SELECT at, username, action, detail FROM audit_log "
+                "WHERE issue_id = ? ORDER BY id DESC",
+                (issue_id,),
+            )
+            return [dict(r) for r in cur.fetchall()]

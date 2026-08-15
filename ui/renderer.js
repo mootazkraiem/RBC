@@ -627,9 +627,14 @@ function renderDetailEdit(issue){
 function showDetailView(){
   document.getElementById("detailEdit").style.display = "none";
   document.getElementById("detailView").style.display = "";
-  const locked = currentDetailIssue.status === "solved" && !isAdminOrAbove();
+  const lockedStatus = currentDetailIssue.status === "solved" || currentDetailIssue.status === "review";
+  const locked = lockedStatus && !isAdminOrAbove();
   document.getElementById("dEditBtn").style.display = locked ? "none" : "";
-  document.getElementById("dLockedNote").style.display = locked ? "" : "none";
+  const lockedNote = document.getElementById("dLockedNote");
+  lockedNote.style.display = locked ? "" : "none";
+  lockedNote.textContent = currentDetailIssue.status === "solved"
+    ? "Solved — only an admin can change this"
+    : "Review — only an admin can change this";
   document.getElementById("dSaveBtn").style.display = "none";
   document.getElementById("dCancelBtn").style.display = "none";
   renderDetailView(currentDetailIssue);

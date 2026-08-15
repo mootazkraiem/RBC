@@ -247,6 +247,13 @@ def get_issue(issue_id: str, user: str = Depends(get_current_user)):
     return issue
 
 
+@app.get("/issues/{issue_id}/history")
+def get_issue_history(issue_id: str, user: str = Depends(get_current_user)):
+    if store.get_issue(issue_id) is None:
+        raise HTTPException(status_code=404, detail=f"No issue found with id {issue_id}.")
+    return store.list_issue_history(issue_id)
+
+
 @app.post("/issues")
 def add_issue(body: IssueIn, user: str = Depends(get_current_user)):
     # Every new issue starts life at "review", regardless of what the client
@@ -264,10 +271,11 @@ def update_issue(issue_id: str, body: IssueIn, user: str = Depends(get_current_u
     current = store.get_issue(issue_id)
     if current is None:
         raise HTTPException(status_code=404, detail=f"No issue found with id {issue_id}.")
-    if current["status"] == "solved" and _user_role(user) not in ("admin", "super_admin"):
+    if current["status"] in ("review", "solved") and _user_role(user) not in ("admin", "super_admin"):
+        label = "Review" if current["status"] == "review" else "Solved"
         raise HTTPException(
             status_code=403,
-            detail="This issue is marked Solved -- only an admin can make further changes to it.",
+            detail=f"This issue is marked {label} -- only an admin can make further changes to it.",
         )
     error = _validate_issue(body)
     if error:

@@ -165,6 +165,10 @@ class Api:
         resp, err = self._request("GET", f"/issues/{issue_id}")
         return err if err else resp.json()
 
+    def get_issue_history(self, issue_id):
+        resp, err = self._request("GET", f"/issues/{issue_id}/history")
+        return [] if err else resp.json()
+
     def next_ref_id(self):
         resp, err = self._request("GET", "/issues/next-ref-id")
         return "REF-…" if err else resp.json()["refId"]
