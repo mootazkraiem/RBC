@@ -287,11 +287,19 @@ def update_issue(issue_id: str, body: IssueIn, user: str = Depends(get_current_u
     current = store.get_issue(issue_id)
     if current is None:
         raise HTTPException(status_code=404, detail=f"No issue found with id {issue_id}.")
-    if current["status"] in ("review", "solved") and _user_role(user) not in ("admin", "super_admin"):
-        label = "Review" if current["status"] == "review" else "Solved"
+    is_admin = _user_role(user) in ("admin", "super_admin")
+    if current["status"] == "solved" and not is_admin:
         raise HTTPException(
             status_code=403,
-            detail=f"This issue is marked {label} -- only an admin can make further changes to it.",
+            detail="This issue is marked Solved -- only an admin can make further changes to it.",
+        )
+    # Content (title, problem, root cause, solution, steps, apps, error code)
+    # is editable by anyone -- only the status/phase itself (review, in
+    # progress, critical, cancelled, solved) requires an admin to change.
+    if body.status != current["status"] and not is_admin:
+        raise HTTPException(
+            status_code=403,
+            detail="Only an admin can change an issue's status.",
         )
     error = _validate_issue(body)
     if error:
@@ -299,6 +307,12 @@ def update_issue(issue_id: str, body: IssueIn, user: str = Depends(get_current_u
     updated = store.update_issue(issue_id, body.model_dump(), user)
     if updated is None:
         raise HTTPException(status_code=404, detail=f"No issue found with id {issue_id}.")
+    if is_admin and body.status != current["status"] and current["createdBy"] and current["createdBy"] != user:
+        store.add_notification(
+            current["createdBy"],
+            f'{user} changed the status of "{current["title"]}" to {body.status.replace("_", " ").title()}',
+            issue_id,
+        )
     return updated
 
 

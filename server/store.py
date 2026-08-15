@@ -101,6 +101,14 @@ CREATE TABLE IF NOT EXISTS notification_state (
     username TEXT PRIMARY KEY,
     last_seen_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS notifications (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT NOT NULL,
+    message TEXT NOT NULL,
+    issue_id TEXT,
+    created_at TEXT NOT NULL
+);
 """
 
 
@@ -680,8 +688,27 @@ class IssueStore:
                 "ORDER BY reviewed_at DESC",
                 (username, last_seen),
             ).fetchall()
+            direct = self.conn.execute(
+                "SELECT id, message, issue_id, created_at FROM notifications "
+                "WHERE username = ? AND created_at > ? ORDER BY created_at DESC",
+                (username, last_seen),
+            ).fetchall()
         return {
             "lastSeenAt": last_seen,
             "newIssues": [dict(r) for r in new_issues],
             "myResolvedRequests": [dict(r) for r in my_resolved_requests],
+            "direct": [dict(r) for r in direct],
         }
+
+    def add_notification(self, username: str, message: str, issue_id: str | None = None) -> None:
+        """A direct, event-driven notification -- e.g. 'an admin changed
+        the status of your issue'. Unlike newIssues/myResolvedRequests
+        (derived by querying existing tables against a last-seen cutoff),
+        this is for events that don't map onto an existing queryable
+        table/timestamp."""
+        with self._lock:
+            self.conn.execute(
+                "INSERT INTO notifications (username, message, issue_id, created_at) VALUES (?,?,?,?)",
+                (username, message, issue_id, _now()),
+            )
+            self.conn.commit()

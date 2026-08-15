@@ -662,7 +662,14 @@ function ensureEditAppsPicker(){
 
 function renderDetailEdit(issue){
   document.getElementById("eTitle").value = issue.title;
-  document.getElementById("eStatus").value = issue.status;
+  const statusSelect = document.getElementById("eStatus");
+  statusSelect.value = issue.status;
+  // Content stays editable by anyone; only the status/phase itself
+  // requires an admin -- server enforces this too, this just avoids
+  // someone filling out a whole edit only to have the status change
+  // rejected at save time.
+  statusSelect.disabled = !isAdminOrAbove();
+  statusSelect.title = statusSelect.disabled ? "Only an admin can change an issue's status" : "";
   document.getElementById("eError").value = issue.error || "";
   document.getElementById("eProblem").value = issue.problem;
   document.getElementById("eRoot").value = issue.root;
@@ -694,14 +701,14 @@ function renderDetailEdit(issue){
 function showDetailView(){
   document.getElementById("detailEdit").style.display = "none";
   document.getElementById("detailView").style.display = "";
-  const lockedStatus = currentDetailIssue.status === "solved" || currentDetailIssue.status === "review";
-  const locked = lockedStatus && !isAdminOrAbove();
+  // "Solved" fully locks the issue (matches the original design); every
+  // other status stays editable by anyone -- only the status field itself
+  // is admin-gated, enforced separately in renderDetailEdit()/the server.
+  const locked = currentDetailIssue.status === "solved" && !isAdminOrAbove();
   document.getElementById("dEditBtn").style.display = locked ? "none" : "";
   const lockedNote = document.getElementById("dLockedNote");
   lockedNote.style.display = locked ? "" : "none";
-  lockedNote.textContent = currentDetailIssue.status === "solved"
-    ? "Solved — only an admin can change this"
-    : "Review — only an admin can change this";
+  lockedNote.textContent = "Solved — only an admin can change this";
   document.getElementById("dSaveBtn").style.display = "none";
   document.getElementById("dCancelBtn").style.display = "none";
   renderDetailView(currentDetailIssue);
