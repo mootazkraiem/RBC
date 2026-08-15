@@ -415,6 +415,41 @@ async function openManageUsers(){
   openOverlay("manageUsersOverlay");
 }
 
+/* ============================== notifications ============================== */
+/* Scoped deliberately: the only real, already-modeled "needs attention"
+   signal in this app today is a pending password-change request, which is
+   already admin/super_admin-only server-side. Reuses list_password_requests
+   -- no new backend endpoint needed for this part. */
+async function refreshNotifications(){
+  const badge = document.getElementById("notifBadge");
+  const pop = document.getElementById("notifPopover");
+  if(!isAdminOrAbove()){
+    badge.style.display = "none";
+    pop.innerHTML = '<div class="notif-empty muted-small">No notifications.</div>';
+    return;
+  }
+  const requests = await api().list_password_requests();
+  if(!requests || requests.apiError || requests.length === 0){
+    badge.style.display = "none";
+    pop.innerHTML = '<div class="notif-empty muted-small">No notifications.</div>';
+    return;
+  }
+  badge.textContent = requests.length > 9 ? "9+" : String(requests.length);
+  badge.style.display = "";
+  pop.innerHTML = requests.map(r => `
+    <button type="button" class="notif-item" data-req="${r.id}">
+      <b>${escapeHtml(r.username)}</b> requested a password change
+      <div class="muted-small">${formatDate(r.requested_at)}</div>
+    </button>
+  `).join("");
+  pop.querySelectorAll(".notif-item").forEach(btn => {
+    btn.addEventListener("click", () => {
+      pop.classList.remove("open");
+      openManageUsers();
+    });
+  });
+}
+
 async function refreshPasswordRequests(){
   const body = document.getElementById("pwRequestListBody");
   const requests = await api().list_password_requests();
@@ -434,6 +469,7 @@ async function refreshPasswordRequests(){
       if(result && result.needsLogin){ closeOverlay("manageUsersOverlay"); showLoginScreen(result.apiError); return; }
       if(result && result.apiError){ alert(result.apiError); return; }
       await refreshPasswordRequests();
+      await refreshNotifications();
     });
   });
   body.querySelectorAll("[data-reject]").forEach(btn => {
@@ -442,6 +478,7 @@ async function refreshPasswordRequests(){
       if(result && result.needsLogin){ closeOverlay("manageUsersOverlay"); showLoginScreen(result.apiError); return; }
       if(result && result.apiError){ alert(result.apiError); return; }
       await refreshPasswordRequests();
+      await refreshNotifications();
     });
   });
 }
@@ -648,8 +685,28 @@ function showDetailEdit(){
   renderDetailEdit(currentDetailIssue);
 }
 
+const HISTORY_ACTION_LABEL = {
+  create_issue: "created this issue",
+  update_issue: "updated this issue",
+  add_attachment: "added an attachment",
+  remove_attachment: "removed an attachment",
+};
+function renderHistory(entries){
+  const box = document.getElementById("dHistory");
+  if(!entries || entries.length === 0){
+    box.innerHTML = '<div class="hint" style="padding:8px 0;">No history yet.</div>';
+    return;
+  }
+  box.innerHTML = entries.map(e => `
+    <div class="user-row">
+      <span class="user-row-name"><b>${escapeHtml(e.username)}</b> ${HISTORY_ACTION_LABEL[e.action] || escapeHtml(e.action)}</span>
+      <span class="muted-small">${formatDate(e.at)}</span>
+    </div>
+  `).join("");
+}
+
 async function openDetail(id){
-  const issue = await api().get_issue(id);
+  const [issue, history] = await Promise.all([api().get_issue(id), api().get_issue_history(id)]);
   if(!issue || issue.apiError){
     if(issue && issue.needsLogin) showLoginScreen(issue.apiError);
     else alert((issue && issue.apiError) || "Could not load that issue.");
@@ -657,6 +714,7 @@ async function openDetail(id){
   }
   currentDetailIssue = issue;
   showDetailView();
+  renderHistory(history);
   openOverlay("detailOverlay");
 }
 function closeDetail(){ closeOverlay("detailOverlay"); }
@@ -684,6 +742,7 @@ async function saveDetailEdit(){
   }
   currentDetailIssue = result;
   showDetailView();
+  renderHistory(await api().get_issue_history(currentDetailIssue.id));
   await renderList(document.getElementById("searchInput").value);
 }
 
@@ -807,7 +866,12 @@ function wireEvents(){
 
   const notifBtn = document.getElementById("notifBtn");
   const notifPop = document.getElementById("notifPopover");
-  notifBtn.addEventListener("click", (e) => { e.stopPropagation(); notifPop.classList.toggle("open"); });
+  notifBtn.addEventListener("click", async (e) => {
+    e.stopPropagation();
+    const opening = !notifPop.classList.contains("open");
+    notifPop.classList.toggle("open");
+    if(opening) await refreshNotifications();
+  });
   document.addEventListener("click", () => notifPop.classList.remove("open"));
 
   document.getElementById("helpBtn").addEventListener("click", async () => {
@@ -910,6 +974,7 @@ async function completeInit(){
   document.body.classList.toggle("is-admin", isAdminOrAbove());
   document.getElementById("dataDirLabel").textContent =
     `Signed in as ${info.displayName || info.username}\n${info.serverUrl}`;
+  await refreshNotifications();
 }
 
 async function init(){
@@ -927,7 +992,7 @@ async function init(){
   setIcon("searchKbIcon", "search");
   setIcon("editIcon", "edit");
   setIcon("saveIcon", "check");
-  document.getElementById("notifBtn").innerHTML = iconSvg("bell");
+  document.getElementById("notifBtnIcon").innerHTML = iconSvg("bell");
   document.getElementById("manageUsersBtn").innerHTML = iconSvg("user");
   document.getElementById("helpBtn").innerHTML = iconSvg("help");
   document.getElementById("signOutBtn").innerHTML = iconSvg("signOut");

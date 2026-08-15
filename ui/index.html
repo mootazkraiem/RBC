@@ -48,8 +48,11 @@
     </div>
     <div class="nav-divider"></div>
     <div class="nav-icon-wrap">
-      <button class="icon-btn" id="notifBtn" title="Notifications" aria-label="Notifications"></button>
-      <div class="popover" id="notifPopover">No notifications yet — this prototype doesn't track notifications.</div>
+      <button class="icon-btn" id="notifBtn" title="Notifications" aria-label="Notifications">
+        <span id="notifBtnIcon"></span>
+        <span class="icon-btn-badge" id="notifBadge" style="display:none;"></span>
+      </button>
+      <div class="popover" id="notifPopover"></div>
     </div>
     <div class="nav-icon-wrap admin-only">
       <button class="icon-btn" id="manageUsersBtn" title="Manage Users" aria-label="Manage Users"></button>

@@ -41,3 +41,30 @@
 2026-08-14T23:22:47Z INF precheck component="TCP Connectivity" details="HTTP/2 connection successful" run_id=04a2f0ab-501d-483c-90f0-2d430fd6d709 status=pass target=region2.v2.argotunnel.com
 2026-08-14T23:22:47Z INF precheck component="Cloudflare API" details="API is reachable" run_id=04a2f0ab-501d-483c-90f0-2d430fd6d709 status=pass target=api.cloudflare.com:443
 2026-08-14T23:22:47Z INF precheck complete hard_fail=false run_id=04a2f0ab-501d-483c-90f0-2d430fd6d709 suggested_protocol=quic
+2026-08-15T00:08:13Z ERR failed to accept incoming stream requests error="failed to accept QUIC stream: write udp [::]:53913->198.41.200.33:7844: wsasendto: A socket operation was attempted to an unreachable network." connIndex=0 event=0 ip=198.41.200.33
+2026-08-15T00:08:13Z ERR failed to run the datagram handler error="context canceled" connIndex=0 event=0 ip=198.41.200.33
+2026-08-15T00:08:13Z ERR failed to serve tunnel connection error="accept stream listener encountered a failure while serving" connIndex=0 event=0 ip=198.41.200.33
+2026-08-15T00:08:13Z ERR Serve tunnel error error="accept stream listener encountered a failure while serving" connIndex=0 event=0 ip=198.41.200.33
+2026-08-15T00:08:13Z INF Retrying connection in up to 1s connIndex=0 event=0 ip=198.41.200.33
+2026-08-15T00:08:14Z INF Tunnel connection curve preferences: [X25519MLKEM768 CurveID(65074) CurveP256] connIndex=0 event=0 ip=198.41.200.33
+2026-08-15T00:08:14Z ERR Failed to dial a quic connection error="failed to dial to edge with quic: write udp [::]:53913->198.41.200.33:7844: wsasendto: A socket operation was attempted to an unreachable network." connIndex=0 event=0 ip=198.41.200.33
+2026-08-15T00:08:14Z INF Retrying connection in up to 4s connIndex=0 event=0 ip=198.41.200.33
+2026-08-15T00:08:14Z INF Tunnel connection curve preferences: [X25519MLKEM768 CurveID(65074) CurveP256] connIndex=0 event=0 ip=198.41.192.67
+2026-08-15T00:08:14Z ERR Failed to dial a quic connection error="failed to dial to edge with quic: write udp [::]:53913->198.41.192.67:7844: wsasendto: A socket operation was attempted to an unreachable network." connIndex=0 event=0 ip=198.41.192.67
+2026-08-15T00:08:14Z INF Retrying connection in up to 8s connIndex=0 event=0 ip=198.41.192.67
+2026-08-15T00:08:19Z INF Tunnel connection curve preferences: [X25519MLKEM768 CurveID(65074) CurveP256] connIndex=0 event=0 ip=198.41.192.47
+2026-08-15T00:08:19Z ERR Failed to dial a quic connection error="failed to dial to edge with quic: write udp [::]:53913->198.41.192.47:7844: wsasendto: A socket operation was attempted to an unreachable network." connIndex=0 event=0 ip=198.41.192.47
+2026-08-15T00:08:19Z INF Retrying connection in up to 16s connIndex=0 event=0 ip=198.41.192.47
+2026-08-15T00:08:24Z INF Tunnel connection curve preferences: [X25519MLKEM768 CurveID(65074) CurveP256] connIndex=0 event=0 ip=198.41.200.193
+2026-08-15T00:08:24Z ERR Failed to dial a quic connection error="failed to dial to edge with quic: write udp [::]:53913->198.41.200.193:7844: wsasendto: A socket operation was attempted to an unreachable network." connIndex=0 event=0 ip=198.41.200.193
+2026-08-15T00:08:24Z INF Retrying connection in up to 32s connIndex=0 event=0 ip=198.41.200.193
+2026-08-15T00:08:51Z INF Tunnel connection curve preferences: [X25519MLKEM768 CurveID(65074) CurveP256] connIndex=0 event=0 ip=198.41.192.37
+2026-08-15T00:08:52Z INF Registered tunnel connection connIndex=0 connection=801f9b54-6081-42bf-8a18-aa945c6f4297 event=0 ip=198.41.192.37 location=mrs01 protocol=quic
+2026-08-15T00:32:42Z ERR failed to accept incoming stream requests error="failed to accept QUIC stream: write udp [::]:53913->198.41.192.37:7844: wsasendto: A socket operation was attempted to an unreachable network." connIndex=0 event=0 ip=198.41.192.37
+2026-08-15T00:32:42Z ERR failed to run the datagram handler error="write udp [::]:53913->198.41.192.37:7844: wsasendto: A socket operation was attempted to an unreachable network." connIndex=0 event=0 ip=198.41.192.37
+2026-08-15T00:32:42Z ERR failed to serve tunnel connection error="accept stream listener encountered a failure while serving" connIndex=0 event=0 ip=198.41.192.37
+2026-08-15T00:32:42Z ERR Serve tunnel error error="accept stream listener encountered a failure while serving" connIndex=0 event=0 ip=198.41.192.37
+2026-08-15T00:32:42Z INF Retrying connection in up to 1s connIndex=0 event=0 ip=198.41.192.37
+2026-08-15T00:32:42Z INF Tunnel connection curve preferences: [X25519MLKEM768 CurveID(65074) CurveP256] connIndex=0 event=0 ip=198.41.192.37
+2026-08-15T00:32:42Z ERR Failed to dial a quic connection error="failed to dial to edge with quic: write udp [::]:53913->198.41.192.37:7844: wsasendto: A socket operation was attempted to an unreachable network." connIndex=0 event=0 ip=198.41.192.37
+2026-08-15T00:32:42Z INF Retrying connection in up to 4s connIndex=0 event=0 ip=198.41.192.37
