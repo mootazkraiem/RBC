@@ -6,7 +6,12 @@ a = Analysis(
     pathex=[],
     binaries=[],
     datas=[('ui', 'ui')],
-    hiddenimports=[],
+    # truststore is imported inside a try/except ImportError in api.py (so
+    # the app degrades gracefully on a machine without it) -- PyInstaller's
+    # static analyzer doesn't reliably detect imports inside try/except,
+    # so it silently gets left out of the build without this. Confirmed:
+    # a build without this line contains zero trace of truststore anywhere.
+    hiddenimports=['truststore'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
