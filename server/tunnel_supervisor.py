@@ -162,6 +162,7 @@ class TunnelProcess:
 
 
 def main():
+    _kill_cloudflared_if_this_process_dies()
     log("Starting tunnel supervisor (process liveness + real health checks).")
     while True:
         tunnel = TunnelProcess()
