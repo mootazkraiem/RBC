@@ -490,39 +490,62 @@ async function refreshNotifications(){
   }
 }
 
+function notifItemHtml({ icon, colorClass, text, time, tag = "button", dataAttrs = "" }){
+  const el = tag === "button" ? "button" : "div";
+  const typeAttr = tag === "button" ? 'type="button"' : "";
+  return `
+    <${el} ${typeAttr} class="notif-item" ${dataAttrs}>
+      <span class="notif-icon notif-icon-${colorClass}">${iconSvg(icon)}</span>
+      <span class="notif-body">
+        <span class="notif-text">${text}</span>
+        <span class="notif-time">${formatDate(time)}</span>
+      </span>
+    </${el}>`;
+}
+
 function renderNotificationPopover(){
   const pop = document.getElementById("notifPopover");
   const { pending, newIssues, resolvedRequests, direct } = _lastNotifications;
+  const total = pending.length + newIssues.length + resolvedRequests.length + direct.length;
   const sections = [];
   if(pending.length){
-    sections.push('<div class="notif-section-label">Needs your review</div>' + pending.map(r => `
-      <button type="button" class="notif-item" data-open-manage-users="1">
-        <b>${escapeHtml(r.username)}</b> requested a password change
-        <div class="muted-small">${formatDate(r.requested_at)}</div>
-      </button>`).join(""));
+    sections.push('<div class="notif-section-label">Needs your review</div>' + pending.map(r => notifItemHtml({
+      icon: "user", colorClass: "indigo",
+      text: `<b>${escapeHtml(r.username)}</b> requested a password change`,
+      time: r.requested_at, dataAttrs: 'data-open-manage-users="1"',
+    })).join(""));
   }
   if(direct.length){
-    sections.push('<div class="notif-section-label">Updates</div>' + direct.map(n => `
-      <button type="button" class="notif-item" ${n.issue_id ? `data-open-issue="${escapeAttr(n.issue_id)}"` : ""}>
-        ${escapeHtml(n.message)}
-        <div class="muted-small">${formatDate(n.created_at)}</div>
-      </button>`).join(""));
+    sections.push('<div class="notif-section-label">Updates</div>' + direct.map(n => notifItemHtml({
+      icon: "edit", colorClass: "amber", text: escapeHtml(n.message), time: n.created_at,
+      dataAttrs: n.issue_id ? `data-open-issue="${escapeAttr(n.issue_id)}"` : "",
+    })).join(""));
   }
   if(newIssues.length){
-    sections.push('<div class="notif-section-label">New in the knowledge base</div>' + newIssues.map(i => `
-      <button type="button" class="notif-item" data-open-issue="${escapeAttr(i.id)}">
-        <b>${escapeHtml(i.created_by)}</b> added "${escapeHtml(i.title)}"
-        <div class="muted-small">${formatDate(i.created_at)}</div>
-      </button>`).join(""));
+    sections.push('<div class="notif-section-label">New in the knowledge base</div>' + newIssues.map(i => notifItemHtml({
+      icon: "plus", colorClass: "blue",
+      text: `<b>${escapeHtml(i.created_by)}</b> added "${escapeHtml(i.title)}"`,
+      time: i.created_at, dataAttrs: `data-open-issue="${escapeAttr(i.id)}"`,
+    })).join(""));
   }
   if(resolvedRequests.length){
-    sections.push('<div class="notif-section-label">Your account</div>' + resolvedRequests.map(r => `
-      <div class="notif-item">
-        Your password change was ${escapeHtml(r.status)}
-        <div class="muted-small">${formatDate(r.reviewed_at)}</div>
-      </div>`).join(""));
+    sections.push('<div class="notif-section-label">Your account</div>' + resolvedRequests.map(r => notifItemHtml({
+      icon: "check", colorClass: r.status === "approved" ? "green" : "red",
+      text: `Your password change was ${escapeHtml(r.status)}`, time: r.reviewed_at, tag: "div",
+    })).join(""));
   }
-  pop.innerHTML = sections.length ? sections.join("") : '<div class="notif-empty muted-small">No notifications.</div>';
+  if(sections.length){
+    pop.innerHTML = `
+      <div class="popover-header"><h4>Notifications</h4><span class="notif-total">${total}</span></div>
+      ${sections.join("")}`;
+  } else {
+    pop.innerHTML = `
+      <div class="popover-header"><h4>Notifications</h4></div>
+      <div class="notif-empty">
+        <span class="notif-empty-icon">${iconSvg("bell")}</span>
+        <div class="muted-small">You're all caught up.</div>
+      </div>`;
+  }
   pop.querySelectorAll("[data-open-manage-users]").forEach(btn => {
     btn.addEventListener("click", () => { pop.classList.remove("open"); openManageUsers(); });
   });
