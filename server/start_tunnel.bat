@@ -13,4 +13,12 @@ REM tunnel with a fixed hostname -- see:
 REM https://developers.cloudflare.com/cloudflare-one/connections/connect-apps
 REM Once that's done this script's --url quick-tunnel invocation goes away
 REM in favor of `cloudflared tunnel run <name>`.
-cloudflared tunnel --url https://localhost:8443 --no-tls-verify >> "%~dp0tunnel.log" 2>&1
+REM
+REM Runs through tunnel_supervisor.py rather than calling cloudflared
+REM directly: a quick tunnel can go from "connected" to "silently stuck in
+REM an internal reconnect-failure loop" while the process itself stays
+REM alive -- confirmed happening in practice -- so this actively
+REM health-checks the public URL and force-restarts cloudflared if it's
+REM been unreachable too long, not just if the process exits outright.
+cd /d "%~dp0.."
+python -m server.tunnel_supervisor

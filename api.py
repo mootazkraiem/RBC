@@ -24,6 +24,25 @@ import webview
 
 from client_config import load_config, verify_option
 
+# Trust whatever the OS already trusts (Windows' SChannel store, etc.)
+# instead of only the public CAs bundled in certifi. This matters
+# specifically for corporate networks running TLS-inspecting proxies
+# (Zscaler and similar): IT already pushes that proxy's root certificate
+# into the OS trust store via Group Policy -- that's the whole reason a
+# normal browser passes through it without complaint. requests/urllib3
+# don't consult the OS store by default, so without this, every user on
+# such a network hits an unresolvable certificate error the first time
+# they connect, with no fix short of manually exporting and pinning that
+# proxy's certificate by hand on every single machine. Confirmed this
+# exact failure mode firsthand. Falls back to certifi's default list if
+# the package isn't installed, so this degrades safely rather than
+# breaking startup.
+try:
+    import truststore
+    truststore.inject_into_ssl()
+except ImportError:
+    pass
+
 REQUEST_TIMEOUT = 15
 
 

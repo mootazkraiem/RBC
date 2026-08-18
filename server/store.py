@@ -173,6 +173,16 @@ class IssueStore:
         self._lock = threading.Lock()
         self.conn = sqlite3.connect(str(db_path), check_same_thread=False)
         self.conn.row_factory = sqlite3.Row
+        # WAL lets reads (list/search/get, the bulk of traffic from a team
+        # this size) proceed without blocking behind a write, instead of
+        # SQLite's default rollback-journal mode where every write briefly
+        # locks the whole file. Paired with the standard NORMAL sync level,
+        # which trades a negligible durability window (loses at most the
+        # last commit on an OS crash, not on a process crash) for a real
+        # write-latency improvement -- the right tradeoff once more than a
+        # couple of people are hitting this at once.
+        self.conn.execute("PRAGMA journal_mode=WAL")
+        self.conn.execute("PRAGMA synchronous=NORMAL")
         self.conn.executescript(SCHEMA)
 
         existing_cols = {r["name"] for r in self.conn.execute("PRAGMA table_info(issues)")}
