@@ -477,7 +477,7 @@ async function refreshNotifications(){
       () => "Your account", r => `Your password change was ${r.status}`);
     toastNewItems(_lastNotifications.direct, "direct", n => n.id,
       () => "Update", n => n.message,
-      n.issue_id ? (n => { document.getElementById("notifPopover").classList.remove("open"); openDetail(n.issue_id); }) : null);
+      n => { if(n.issue_id){ document.getElementById("notifPopover").classList.remove("open"); openDetail(n.issue_id); } });
   }
   _notifsInitialized = true;
   const total = _lastNotifications.pending.length + _lastNotifications.newIssues.length +
