@@ -96,6 +96,15 @@ def _kill_cloudflared_if_this_process_dies():
         JobObjectExtendedLimitInformation = 9
 
         kernel32 = ctypes.windll.kernel32
+        # Without these, ctypes defaults GetCurrentProcess()'s return type
+        # to a 32-bit int, silently truncating the real pseudo-handle
+        # (0xFFFFFFFFFFFFFFFF) -- AssignProcessToJobObject then fails with
+        # ERROR_INVALID_HANDLE (6). Confirmed via direct testing: without
+        # these declarations this whole function is a silent no-op.
+        kernel32.CreateJobObjectW.restype = wintypes.HANDLE
+        kernel32.GetCurrentProcess.restype = wintypes.HANDLE
+        kernel32.AssignProcessToJobObject.argtypes = [wintypes.HANDLE, wintypes.HANDLE]
+
         job = kernel32.CreateJobObjectW(None, None)
         if not job:
             return
@@ -104,7 +113,9 @@ def _kill_cloudflared_if_this_process_dies():
         kernel32.SetInformationJobObject(
             job, JobObjectExtendedLimitInformation, ctypes.byref(info), ctypes.sizeof(info)
         )
-        kernel32.AssignProcessToJobObject(job, kernel32.GetCurrentProcess())
+        if not kernel32.AssignProcessToJobObject(job, kernel32.GetCurrentProcess()):
+            log(f"AssignProcessToJobObject failed (GetLastError={ctypes.GetLastError()}) "
+                "-- cloudflared may be orphaned if this process is force-killed.")
         global _job_handle
         _job_handle = job
     except OSError:

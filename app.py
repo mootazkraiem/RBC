@@ -144,6 +144,16 @@ def _kill_webview2_children_if_this_process_dies():
         JobObjectExtendedLimitInformation = 9
 
         kernel32 = ctypes.windll.kernel32
+        # Without these, ctypes defaults GetCurrentProcess()'s return type
+        # to a 32-bit int, silently truncating the real pseudo-handle
+        # (0xFFFFFFFFFFFFFFFF) -- AssignProcessToJobObject then fails with
+        # ERROR_INVALID_HANDLE (6), and this whole function is a silent
+        # no-op. Confirmed via direct testing against the identical
+        # pattern in tunnel_supervisor.py.
+        kernel32.CreateJobObjectW.restype = wintypes.HANDLE
+        kernel32.GetCurrentProcess.restype = wintypes.HANDLE
+        kernel32.AssignProcessToJobObject.argtypes = [wintypes.HANDLE, wintypes.HANDLE]
+
         job = kernel32.CreateJobObjectW(None, None)
         if not job:
             return
