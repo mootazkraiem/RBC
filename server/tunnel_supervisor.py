@@ -52,20 +52,58 @@ def _kill_cloudflared_if_this_process_dies():
     the same reason. Directly observed cloudflared surviving as an orphan
     after this supervisor's own process was force-killed -- without this,
     every force-kill leaves a stray cloudflared process running with
-    nothing left to manage or health-check it."""
+    nothing left to manage or health-check it. Struct layout mirrors the
+    verified-working version in app.py exactly -- a hand-computed byte
+    offset into a raw buffer is exactly the kind of thing that's silently
+    wrong (LimitFlags is not at the offset it looks like it should be,
+    thanks to LARGE_INTEGER padding), so this uses real ctypes.Structure
+    definitions instead of guessing."""
     if sys.platform != "win32":
         return
     try:
         import ctypes
+        from ctypes import wintypes
+
+        class _BASIC_LIMITS(ctypes.Structure):
+            _fields_ = [
+                ("PerProcessUserTimeLimit", ctypes.c_int64),
+                ("PerJobUserTimeLimit", ctypes.c_int64),
+                ("LimitFlags", wintypes.DWORD),
+                ("MinimumWorkingSetSize", ctypes.c_size_t),
+                ("MaximumWorkingSetSize", ctypes.c_size_t),
+                ("ActiveProcessLimit", wintypes.DWORD),
+                ("Affinity", ctypes.c_size_t),
+                ("PriorityClass", wintypes.DWORD),
+                ("SchedulingClass", wintypes.DWORD),
+            ]
+
+        class _IO_COUNTERS(ctypes.Structure):
+            _fields_ = [(n, ctypes.c_uint64) for n in (
+                "ReadOperationCount", "WriteOperationCount", "OtherOperationCount",
+                "ReadTransferCount", "WriteTransferCount", "OtherTransferCount")]
+
+        class _EXTENDED_LIMITS(ctypes.Structure):
+            _fields_ = [
+                ("BasicLimitInformation", _BASIC_LIMITS),
+                ("IoInfo", _IO_COUNTERS),
+                ("ProcessMemoryLimit", ctypes.c_size_t),
+                ("JobMemoryLimit", ctypes.c_size_t),
+                ("PeakProcessMemoryUsed", ctypes.c_size_t),
+                ("PeakJobMemoryUsed", ctypes.c_size_t),
+            ]
+
+        JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE = 0x2000
+        JobObjectExtendedLimitInformation = 9
+
         kernel32 = ctypes.windll.kernel32
         job = kernel32.CreateJobObjectW(None, None)
         if not job:
             return
-        JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE = 0x2000
-        JobObjectExtendedLimitInformation = 9
-        buf = ctypes.create_string_buffer(64)  # oversized; only LimitFlags (a DWORD at offset 8-ish) matters
-        ctypes.memmove(ctypes.byref(buf, 8), ctypes.byref(ctypes.c_uint32(JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE)), 4)
-        kernel32.SetInformationJobObject(job, JobObjectExtendedLimitInformation, buf, len(buf))
+        info = _EXTENDED_LIMITS()
+        info.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+        kernel32.SetInformationJobObject(
+            job, JobObjectExtendedLimitInformation, ctypes.byref(info), ctypes.sizeof(info)
+        )
         kernel32.AssignProcessToJobObject(job, kernel32.GetCurrentProcess())
         global _job_handle
         _job_handle = job
