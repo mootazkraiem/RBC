@@ -16,6 +16,7 @@ import os
 import subprocess
 import sys
 import time
+from pathlib import Path
 
 import requests
 import webview
@@ -91,6 +92,38 @@ def _autostart_local_server_if_needed(config):
             print("[app] Local server is up.", flush=True)
             return
     print("[app] Warning: local server did not respond in time; continuing anyway.", flush=True)
+
+
+def _unblock_own_files():
+    """Windows only, packaged builds only: strip the "downloaded from the
+    internet" mark (an NTFS Zone.Identifier alternate-data-stream) from
+    every file next to this exe, before anything tries to load
+    Python.Runtime.dll.
+
+    Confirmed by direct, controlled test: byte-identical files, identical
+    (clean, no-special-characters) path -- the *only* difference was this
+    mark -- and it was entirely sufficient on its own to reproduce
+    "RuntimeError: Failed to resolve Python.Runtime.Loader.Initialize".
+    Removing the mark and relaunching with nothing else changed fixed it
+    immediately. .NET Framework's classic assembly-loading security model
+    is what's actually refusing to load a marked assembly; this has
+    nothing to do with WebView2, antivirus, or corporate policy, despite
+    strongly resembling all three.
+
+    Windows applies this mark automatically to every file extracted from a
+    zip that was itself downloaded through a browser -- which is exactly
+    how this app reaches most machines, so this can't be left as a manual
+    "remember to run Unblock-File" step for every one of 40 people.
+    """
+    if os.name != "nt" or not _FROZEN:
+        return
+    root = Path(sys.executable).resolve().parent
+    for path in root.rglob("*"):
+        if path.is_file():
+            try:
+                os.remove(f"{path}:Zone.Identifier")
+            except OSError:
+                pass  # not tagged, already removed, or in use -- fine either way
 
 
 def _kill_webview2_children_if_this_process_dies():
@@ -170,6 +203,7 @@ def _kill_webview2_children_if_this_process_dies():
 
 
 def main():
+    _unblock_own_files()
     _kill_webview2_children_if_this_process_dies()
     config = load_config()
     _autostart_local_server_if_needed(config)
