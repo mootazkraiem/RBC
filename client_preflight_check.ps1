@@ -13,6 +13,28 @@ $failures = 0
 Write-Output "=== Release Knowledge Capture -- client pre-flight check ==="
 Write-Output ""
 
+# 0. Path sanity -- pythonnet's .NET-hosting mechanism (used to talk to
+# WebView2) fails with "Failed to resolve Python.Runtime.Loader.Initialize"
+# when the install path contains parentheses. This happens by accident all
+# the time: extracting the same zip twice into Downloads without deleting
+# the first copy makes Windows auto-name the second one "(1)", "(2)", etc.
+# Confirmed as the actual cause of two separate "won't launch" reports
+# that looked like corporate security blocks but weren't.
+Write-Output "[0/3] Checking install path for problem characters..."
+if ($PSScriptRoot -match '[()]') {
+    Write-Output "  PROBLEM -- this folder's path contains parentheses:"
+    Write-Output "  $PSScriptRoot"
+    Write-Output "  This specifically breaks the app (pythonnet DLL loading fails)."
+    Write-Output "  Usually caused by extracting the same zip more than once without"
+    Write-Output "  deleting the previous copy first (Windows names the new one '(1)',"
+    Write-Output "  '(2)', etc). Delete ALL existing ReleaseKnowledgeCapture folders in"
+    Write-Output "  Downloads, then extract fresh exactly once."
+    $failures++
+} else {
+    Write-Output "  OK -- no parentheses in the install path."
+}
+Write-Output ""
+
 # 1. WebView2 Runtime -- without this, the app opens a blank/frozen window
 # with no error message at all. This was the single hardest bug to
 # diagnose remotely during the pilot; catching it here takes 2 seconds.
