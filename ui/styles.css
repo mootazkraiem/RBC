@@ -494,7 +494,8 @@ footer{text-align:center;color:var(--muted);font-size:11.5px;padding:22px;}
 .rl-h1{margin:22px 0 0;max-width:560px;font-size:29px;line-height:35px;font-weight:800;letter-spacing:-.025em;font-family:var(--rl-font-sans);}
 .rl-h1 em{font-style:normal;color:var(--rl-brand-100);}
 
-.rl-journey{position:relative;margin:-66px 0 -66px;align-self:center;width:570px;height:470px;transform:scale(.72);transform-origin:center;}
+.rl-journey{position:relative;margin:8px 0 0;align-self:center;width:410px;height:338px;}
+.rl-journey-scale{position:absolute;top:50%;left:50%;width:570px;height:470px;transform:translate(-50%,-50%) scale(.72);}
 .rl-journey svg.rl-track{position:absolute;inset:0;overflow:visible;}
 .rl-track .rl-base{fill:none;stroke:var(--rl-on-brand-line);stroke-width:1;}
 .rl-track .rl-outer{fill:none;stroke:var(--rl-on-brand-line);stroke-width:1;stroke-dasharray:2 8;stroke-linecap:round;}
