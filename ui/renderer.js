@@ -2241,7 +2241,6 @@ async function completeInit(){
 
 async function init(){
   setIcon("brandIcon", "book");
-  setIcon("loginBrandIcon", "book");
   setIcon("refInfoIcon", "info");
   setIcon("addStepIcon", "plus");
   setIcon("attachScreenshotIcon", "camera");

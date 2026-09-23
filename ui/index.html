@@ -9,58 +9,96 @@
 <body>
 
 <div class="login-screen open" id="loginScreen">
-  <div class="login-panel">
-    <div class="login-hero">
-      <div class="login-hero-brand">
-        <div class="brand-mark login-brand-mark"><span class="icon icon-white" id="loginBrandIcon"></span></div>
-        <span class="login-hero-brand-text">Release Knowledge Capture</span>
-      </div>
-      <h1 class="login-hero-headline">Turn release experience into shared team knowledge.</h1>
-      <p class="login-hero-sub">Capture what you know in a few minutes. Every entry is reviewed before it joins the RCK knowledge base.</p>
-      <div class="login-type-preview">
-        <div class="login-type-row">
-          <span class="type-glyph type-glyph-ps" style="width:34px;height:34px;font-size:17px;">!</span>
-          <div><b>Problem / Solution</b><span>An issue and how it was fixed</span></div>
-        </div>
-        <div class="login-type-row">
-          <span class="type-glyph type-glyph-info" style="width:34px;height:34px;font-size:17px;">?</span>
-          <div><b>Information</b><span>How a system or concept works</span></div>
-        </div>
-        <div class="login-type-row">
-          <span class="type-glyph type-glyph-proc" style="width:34px;height:34px;font-size:17px;">→</span>
-          <div><b>Procedure</b><span>How to do something, step by step</span></div>
-        </div>
-      </div>
-      <div class="login-lifecycle-strip">
-        <span>Captured</span><span class="ll-dash">—</span><span>Pending review</span><span class="ll-dash">—</span><span>Validated</span><span class="ll-dash">—</span><span>Trusted</span>
-      </div>
-    </div>
-    <div class="login-form-pane">
-      <h1>Sign in</h1>
-      <p class="login-sub">Use your Release Knowledge Capture account. Your entries are submitted directly to the shared knowledge base.</p>
+  <div class="rl-stage">
+  <main class="rl-card">
 
-      <label for="loginUsername">Username <span class="req-star">*</span></label>
-      <div class="login-input-icon">
-        <span class="icon icon-sm icon-muted" data-nav-icon="user"></span>
-        <input type="text" id="loginUsername" autocomplete="username" placeholder="e.g., jsmith">
-      </div>
-      <label for="loginPassword">Password <span class="req-star">*</span></label>
-      <div class="login-input-icon">
-        <span class="icon icon-sm icon-muted" data-nav-icon="lock"></span>
-        <input type="password" id="loginPassword" autocomplete="current-password">
+    <section class="rl-vision" aria-labelledby="rl-vision-title">
+      <div class="rl-brand">
+        <div class="rl-brand-chip" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6.5C10.3 5.2 7.9 4.6 4 4.6v13.2c3.9 0 6.3.6 8 1.9 1.7-1.3 4.1-1.9 8-1.9V4.6c-3.9 0-6.3.6-8 1.9Z" fill="currentColor" fill-opacity=".16"/><path d="M12 6.5v13.2"/></svg>
+        </div>
+        <div class="rl-brand-name">Release Knowledge Capture<span>RCK knowledge platform</span></div>
       </div>
 
-      <div class="login-error" id="loginError" style="display:none;"></div>
+      <h1 id="rl-vision-title" class="rl-h1">From release experience<br>to <em>trusted knowledge.</em></h1>
 
-      <button class="btn btn-primary btn-block" id="loginSubmitBtn">
-        Sign in <span class="icon icon-white icon-sm" data-nav-icon="arrowRight"></span>
-      </button>
-      <div class="login-hint login-hint-folder">
-        <span class="icon icon-sm icon-muted" data-nav-icon="shieldCheck"></span>
-        Entries are submitted directly to the shared team database — nothing stays only on this machine.
+      <div class="rl-journey" role="img" aria-label="Capture, review and validate feed trusted knowledge, which will later power an AI assistant — coming soon">
+        <div class="rl-orbit">
+        <svg class="rl-track" viewBox="0 0 570 470" width="570" height="470" aria-hidden="true">
+          <defs>
+            <linearGradient id="rlTrackGrad" x1="0" y1="1" x2="1" y2="0">
+              <stop offset="0" stop-color="#ffffff" stop-opacity=".25"/>
+              <stop offset="1" stop-color="#ffffff" stop-opacity=".9"/>
+            </linearGradient>
+          </defs>
+          <circle class="rl-outer" cx="285" cy="240" r="212"/>
+          <circle class="rl-base" cx="285" cy="240" r="150"/>
+          <circle class="rl-halo" cx="285" cy="240" r="78"/>
+          <path class="rl-flow" d="M155 315 A150 150 0 1 1 415 315 L285 240" pathLength="100"/>
+          <path class="rl-chev" d="M147.8 165.5 L158.0 159.8 L158.2 171.5"/><path class="rl-chev" d="M418.2 158.5 L418.0 170.2 L407.8 164.5"/>
+          <circle class="rl-mote" cx="248" cy="449" r="2"/><circle class="rl-mote" cx="76" cy="203" r="2.5"/><circle class="rl-mote" cx="195" cy="48" r="1.5"/><circle class="rl-mote" cx="484" cy="313" r="2"/>
+        </svg>
+        <div class="rl-spark" aria-hidden="true"></div>
+        <div class="rl-stop rl-s1" style="left:155px; top:315px">
+          <div class="rl-tile" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M18 5H9a2 2 0 0 0-2 2v18a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-9" fill="currentColor" fill-opacity=".16"/><path d="M11.5 12.5h5M11.5 17h7M11.5 21.5h4"/><path d="M26.2 4.8a2 2 0 0 1 0 2.8l-7.7 7.7-3.5.9.9-3.5 7.7-7.7a2 2 0 0 1 2.6-.2Z"/></svg><span class="rl-num">1</span></div>
+          <div class="rl-label">Capture</div>
+        </div>
+        <div class="rl-stop rl-up rl-s2" style="left:285px; top:90px">
+          <div class="rl-tile" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h10M5 13h6M5 18h5"/><circle cx="19" cy="17" r="6.5" fill="currentColor" fill-opacity=".16"/><path d="m24 22 4.5 4.5"/><path d="m16.4 17 1.8 1.8 3.3-3.3"/></svg><span class="rl-num">2</span></div>
+          <div class="rl-label">Review</div>
+        </div>
+        <div class="rl-stop rl-s3" style="left:415px; top:315px">
+          <div class="rl-tile" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="10.5" r="4.5" fill="currentColor" fill-opacity=".16"/><path d="M4.5 26c.9-4.8 4.2-7.5 8.5-7.5 1.6 0 3 .4 4.3 1"/><path d="m19.5 23.5 2.8 2.8 5.7-5.8"/></svg><span class="rl-num">3</span></div>
+          <div class="rl-label">Validate</div>
+        </div>
+        <div class="rl-stop rl-trusted" style="left:285px; top:240px">
+          <div class="rl-tile" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3.5l2.9 2.1 3.6-.1 1.1 3.4 2.9 2.1-1.1 3.4 1.1 3.4-2.9 2.1-1.1 3.4-3.6-.1L16 25.3l-2.9-2.1-3.6.1-1.1-3.4-2.9-2.1 1.1-3.4-1.1-3.4 2.9-2.1 1.1-3.4 3.6.1L16 3.5Z" fill="currentColor" fill-opacity=".14"/><path d="m11.8 14.4 3 3 5.6-5.6"/><path d="M11 24.5 9.5 29l3.3-1.2L16 29.5l3.2-1.7 3.3 1.2-1.5-4.5" /></svg></div>
+          <div class="rl-label">Trusted knowledge</div>
+        </div>
       </div>
-      <div class="login-hint" style="margin-top:8px;">Connecting to <span id="loginServerUrl"></span></div>
-    </div>
+        <div class="rl-pop" aria-hidden="true">
+          <div class="rl-pop-card">
+            <div class="rl-pop-icon"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 7h20a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H14l-6 4.5V23H6a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2Z"/><path d="M16 10.5c.4 2.2 1.3 3.1 3.5 3.5-2.2.4-3.1 1.3-3.5 3.5-.4-2.2-1.3-3.1-3.5-3.5 2.2-.4 3.1-1.3 3.5-3.5Z" fill="currentColor" fill-opacity=".35"/></svg><span class="rl-pop-lock"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span></div>
+            <div class="rl-pop-title">AI Assistant</div>
+            <div class="rl-pop-sub">Answers grounded in trusted knowledge.</div>
+            <div class="rl-pop-ask"><span>Ask RCK anything…</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></div>
+            <div class="rl-pop-soon">Coming soon</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="rl-signin" aria-labelledby="rl-signin-title">
+      <div class="rl-form">
+        <h2 id="rl-signin-title" class="rl-h2">Sign in</h2>
+        <p class="rl-sub">Welcome back to RCK.</p>
+
+        <div class="rl-field">
+          <label class="rl-label" for="loginUsername">Username <b aria-hidden="true">*</b></label>
+          <div class="rl-input">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c.8-3.4 3.6-5.5 7-5.5s6.2 2.1 7 5.5"/></svg>
+            <input type="text" id="loginUsername" autocomplete="username" placeholder="e.g., jsmith">
+          </div>
+        </div>
+        <div class="rl-field">
+          <label class="rl-label" for="loginPassword">Password <b aria-hidden="true">*</b></label>
+          <div class="rl-input">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+            <input type="password" id="loginPassword" autocomplete="current-password">
+          </div>
+        </div>
+
+        <div class="rl-error" id="loginError" style="display:none;"></div>
+
+        <button class="rl-btn" type="submit" id="loginSubmitBtn">Sign in
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </button>
+
+        <div class="rl-server"><i aria-hidden="true"></i><span id="loginServerUrl"></span></div>
+      </div>
+    </section>
+
+  </main>
   </div>
 </div>
 
