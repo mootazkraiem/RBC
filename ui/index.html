@@ -19,15 +19,15 @@
       <p class="login-hero-sub">Capture what you know in a few minutes. Every entry is reviewed before it joins the RCK knowledge base.</p>
       <div class="login-type-preview">
         <div class="login-type-row">
-          <span class="type-icon" style="width:34px;height:34px;"><span class="icon icon-sm" data-nav-icon="edit"></span></span>
+          <span class="type-glyph type-glyph-ps" style="width:34px;height:34px;font-size:17px;">!</span>
           <div><b>Problem / Solution</b><span>An issue and how it was fixed</span></div>
         </div>
         <div class="login-type-row">
-          <span class="type-icon tc-info" style="width:34px;height:34px;"><span class="icon icon-sm" data-nav-icon="info"></span></span>
+          <span class="type-glyph type-glyph-info" style="width:34px;height:34px;font-size:17px;">?</span>
           <div><b>Information</b><span>How a system or concept works</span></div>
         </div>
         <div class="login-type-row">
-          <span class="type-icon tc-proc" style="width:34px;height:34px;"><span class="icon icon-sm" data-nav-icon="listOrdered"></span></span>
+          <span class="type-glyph type-glyph-proc" style="width:34px;height:34px;font-size:17px;">→</span>
           <div><b>Procedure</b><span>How to do something, step by step</span></div>
         </div>
       </div>
@@ -128,12 +128,6 @@
 <div class="shell-body">
 <header class="topbar">
   <div class="topbar-crumb" id="topbarCrumb">Dashboard</div>
-
-  <div class="searchbar">
-    <span class="icon icon-muted" id="searchIcon"></span>
-    <input id="searchInput" type="text" placeholder="Search knowledge base…">
-    <span class="kbd-hint">Ctrl K</span>
-  </div>
 
   <div class="topbar-end">
     <div class="nav-icon-wrap">
@@ -338,7 +332,7 @@
   <div class="type-grid type-grid-3">
     <button class="type-card tc-ps" type="button" data-capture-type="PROBLEM_SOLUTION">
       <div class="type-top">
-        <div class="type-icon"><span class="icon icon-white" data-nav-icon="wrench"></span></div>
+        <div class="type-icon type-icon-glyph">!</div>
         <span class="type-kicker">Troubleshooting</span>
       </div>
       <div class="type-name">Problem / Solution</div>
@@ -352,7 +346,7 @@
 
     <button class="type-card tc-info" type="button" data-capture-type="INFORMATION">
       <div class="type-top">
-        <div class="type-icon"><span class="icon icon-white" data-nav-icon="info"></span></div>
+        <div class="type-icon type-icon-glyph">?</div>
         <span class="type-kicker">Explanation</span>
       </div>
       <div class="type-name">Information</div>
@@ -366,7 +360,7 @@
 
     <button class="type-card tc-proc" type="button" data-capture-type="PROCEDURE">
       <div class="type-top">
-        <div class="type-icon"><span class="icon icon-white" data-nav-icon="listOrdered"></span></div>
+        <div class="type-icon type-icon-glyph">→</div>
         <span class="type-kicker">How-to</span>
       </div>
       <div class="type-name">Procedure</div>
@@ -421,7 +415,7 @@
   <div class="card" id="captureCard">
     <div class="card-head">
       <div class="card-title">
-        <div class="icon-box"><span class="icon icon-white" id="docIcon"></span></div>
+        <div class="icon-box type-icon-glyph">!</div>
         <div>
           <h2>Capture New Release Issue</h2>
           <p>Record a resolved issue to help the team and improve our knowledge base.</p>
@@ -548,7 +542,7 @@
   <div class="card" id="captureInfoCard">
     <div class="card-head">
       <div class="card-title">
-        <div class="icon-box" style="background:linear-gradient(135deg,var(--secondary),#5636c4);"><span class="icon icon-white" data-nav-icon="info"></span></div>
+        <div class="icon-box type-icon-glyph" style="background:linear-gradient(135deg,var(--secondary),#5636c4);">?</div>
         <div>
           <h2>Capture Information</h2>
           <p>Explain how a system or concept works, for colleagues who need the background.</p>
@@ -597,7 +591,7 @@
   <div class="card" id="captureProcCard">
     <div class="card-head">
       <div class="card-title">
-        <div class="icon-box" style="background:linear-gradient(135deg,var(--teal),#0b6d60);"><span class="icon icon-white" data-nav-icon="listOrdered"></span></div>
+        <div class="icon-box type-icon-glyph" style="background:linear-gradient(135deg,var(--teal),#0b6d60);">→</div>
         <div>
           <h2>Capture Procedure</h2>
           <p>Describe the task so a colleague could perform it without asking you.</p>
@@ -851,8 +845,8 @@
         <div class="ai-preview-msg ai-preview-bot">
           <span class="icon icon-sm" data-nav-icon="sparkles"></span>
           <div>
-            Find the last healthy revision, roll back to it, then confirm the pods are Running and record the rollback in the change ticket.
-            <div class="ai-sources">SOURCES · TRUSTED KNOWLEDGE ONLY</div>
+            Hi <span id="aiPreviewName">there</span> — here's what I found on rolling back a failed Helm release: find the last healthy revision, roll back to it, then confirm the pods are Running and record the rollback in the change ticket.
+            <div class="ai-sources">SOURCE: KC-0187 · "Rolling back a failed Helm release" · Validated 12 Sep 2026</div>
           </div>
         </div>
       </div>

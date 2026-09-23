@@ -97,9 +97,14 @@ function statusClass(s){ return {review:"st-review",in_progress:"st-inprogress",
 function borderClass(s){ return {review:"b-review",in_progress:"b-inprogress",critical:"b-critical",cancelled:"b-cancelled",solved:"b-solved"}[s] || "b-review"; }
 function statusLabel(s){ return {review:"REVIEW",in_progress:"IN PROGRESS",critical:"CRITICAL",cancelled:"CANCELLED",solved:"SOLVED"}[s] || String(s).toUpperCase(); }
 function typeBadgeInfo(t){
-  return { PROBLEM_SOLUTION: { icon: "edit", label: "Problem / Solution" },
-    INFORMATION: { icon: "info", label: "Information" },
-    PROCEDURE: { icon: "listOrdered", label: "Procedure" } }[t] || { icon: "edit", label: "Problem / Solution" };
+  return { PROBLEM_SOLUTION: { icon: "edit", glyph: "!", glyphClass: "type-glyph-ps", label: "Problem / Solution" },
+    INFORMATION: { icon: "info", glyph: "?", glyphClass: "type-glyph-info", label: "Information" },
+    PROCEDURE: { icon: "listOrdered", glyph: "→", glyphClass: "type-glyph-proc", label: "Procedure" }
+  }[t] || { icon: "edit", glyph: "!", glyphClass: "type-glyph-ps", label: "Problem / Solution" };
+}
+function typeGlyphHtml(t, extraClass){
+  const m = typeBadgeInfo(t);
+  return `<span class="type-glyph ${m.glyphClass}${extraClass ? " " + extraClass : ""}">${m.glyph}</span>`;
 }
 function formatDate(iso){
   if(!iso) return "";
@@ -389,7 +394,7 @@ function renderIssueCards(container, items, emptyText, variant){
     const tMeta = typeBadgeInfo(i.type);
     return `
     <div class="issue-row" data-id="${escapeAttr(i.id)}">
-      <span class="row-icon">${iconSvg(tMeta.icon)}</span>
+      ${typeGlyphHtml(i.type, "row-icon")}
       <div class="row-body">
         <div class="row-title">${escapeHtml(i.title)}</div>
         <div class="row-sub">${escapeHtml(i.createdBy || "—")} · ${tMeta.label}</div>
@@ -402,9 +407,7 @@ function renderIssueCards(container, items, emptyText, variant){
   });
 }
 async function openViewAll(){
-  const query = document.getElementById("searchInput").value;
-  const placeholder = "Search knowledge base…";
-  const items = (query && query.trim() && query !== placeholder) ? await api().search_issues(query) : await api().list_issues();
+  const items = await api().list_issues();
   renderIssueCards(document.getElementById("viewAllBody"), items.slice().reverse(), "No issues yet.");
   openOverlay("viewAllOverlay");
 }
@@ -800,7 +803,9 @@ function renderDetailView(issue){
     .map(a => `<span class="chip">${escapeHtml(a)}</span>`).join("");
   const type = issue.type || "PROBLEM_SOLUTION";
   const typeMeta = typeBadgeInfo(type);
-  document.getElementById("dTypeIcon").innerHTML = iconSvg(typeMeta.icon);
+  const dTypeIcon = document.getElementById("dTypeIcon");
+  dTypeIcon.textContent = typeMeta.glyph;
+  dTypeIcon.className = "type-glyph type-glyph-sm " + typeMeta.glyphClass;
   document.getElementById("dTypeLabel").textContent = typeMeta.label;
   document.getElementById("dPSBlock").style.display = type === "PROBLEM_SOLUTION" ? "" : "none";
   document.getElementById("dInfoBlock").style.display = type === "INFORMATION" ? "" : "none";
@@ -986,7 +991,7 @@ async function _reviewSetStatus(newStatus, confirmOpts){
   if(result && result.apiError){ alert(result.apiError); return; }
   currentDetailIssue = result;
   showDetailView();
-  await renderList(document.getElementById("searchInput").value);
+  await renderList();
   refreshDashboard(); refreshReviewQueue();
 }
 async function submitReviewDecision(){
@@ -1108,7 +1113,7 @@ async function saveDetailEdit(){
   currentDetailIssue = result;
   showDetailView();
   renderHistory(await api().get_issue_history(currentDetailIssue.id));
-  await renderList(document.getElementById("searchInput").value);
+  await renderList();
 }
 
 /* ============================== capture: type step + local drafts ============================== */
@@ -1272,7 +1277,7 @@ async function submitIssue(status){
         alert(`"${result.id}" was saved, but attaching "${staged.name}" failed: ${attachResult.apiError}`);
       }
     }
-    await renderList(document.getElementById("searchInput").value);
+    await renderList();
     await clearForm();
     deleteDraft();
     showToast("Knowledge captured", `"${result.title}" was submitted as ${result.id} -- pending review.`);
@@ -1315,7 +1320,7 @@ async function submitInformation(){
       else alert(result.apiError);
       return;
     }
-    await renderList(document.getElementById("searchInput").value);
+    await renderList();
     await clearInfoForm();
     showToast("Knowledge captured", `"${result.title}" was submitted as ${result.id} -- pending review.`);
     showCaptureTypeStep();
@@ -1362,7 +1367,7 @@ async function submitProcedure(){
       else alert(result.apiError);
       return;
     }
-    await renderList(document.getElementById("searchInput").value);
+    await renderList();
     await clearProcForm();
     showToast("Knowledge captured", `"${result.title}" was submitted as ${result.id} -- pending review.`);
     showCaptureTypeStep();
@@ -1632,11 +1637,11 @@ function renderMyEntriesTable(){
     <tr data-id="${escapeAttr(i.id)}" class="data-row">
       <td>
         <div class="entry-cell">
-          <span class="entry-type-icon">${iconSvg(tMeta.icon)}</span>
+          ${typeGlyphHtml(i.type, "entry-type-icon")}
           <div><b>${escapeHtml(i.title)}</b><span class="mono muted-small">${escapeHtml(i.id)}</span></div>
         </div>
       </td>
-      <td><span class="type-badge"><span class="icon icon-sm">${iconSvg(tMeta.icon)}</span> ${escapeHtml(tMeta.label)}</span></td>
+      <td><span class="type-badge">${typeGlyphHtml(i.type, "type-glyph-sm")} ${escapeHtml(tMeta.label)}</span></td>
       <td>${statusHtml}</td>
       <td>${reviewer}</td>
       <td class="muted-small">${formatDate(i.updatedAt || i.createdAt)}</td>
@@ -1709,10 +1714,10 @@ function renderTrustedCards(container, items){
     const tMeta = typeBadgeInfo(type);
     return `
     <div class="trusted-card" data-open="${escapeAttr(i.id)}">
-      <span class="entry-type-icon">${iconSvg(tMeta.icon)}</span>
+      ${typeGlyphHtml(type, "entry-type-icon")}
       <div class="trusted-card-body">
         <div class="trusted-card-badges">
-          <span class="type-badge"><span class="icon icon-sm">${iconSvg(tMeta.icon)}</span> ${escapeHtml(tMeta.label)}</span>
+          <span class="type-badge">${typeGlyphHtml(type, "type-glyph-sm")} ${escapeHtml(tMeta.label)}</span>
           ${i.system ? `<span class="badge-pill">${escapeHtml(i.system)}</span>` : ""}
           <span class="badge-pill badge-pill-trusted"><span class="icon icon-sm" data-nav-icon="shieldCheck"></span> Trusted</span>
         </div>
@@ -1808,7 +1813,7 @@ function renderReviewQueueTab(){
     <tr class="data-row" data-id="${escapeAttr(i.id)}">
       <td>
         <div class="entry-cell">
-          <span class="entry-type-icon">${iconSvg(tMeta.icon)}</span>
+          ${typeGlyphHtml(i.type, "entry-type-icon")}
           <div><b>${escapeHtml(i.title)}</b><span class="mono muted-small">${escapeHtml(i.id)}</span></div>
         </div>
       </td>
@@ -1832,6 +1837,8 @@ async function refreshAiAssistant(){
   document.getElementById("aiStepCapture").textContent = `${items.length} total`;
   document.getElementById("aiStepPending").textContent = `${pending} ${pending === 1 ? "entry" : "entries"}`;
   document.getElementById("aiStepTrusted").textContent = `${trusted} ${trusted === 1 ? "entry" : "entries"}`;
+  const first = (currentDisplayName || currentUsername || "").split(" ")[0];
+  document.getElementById("aiPreviewName").textContent = first || "there";
 }
 
 /* ---- My account ---- */
@@ -2044,18 +2051,10 @@ function wireEvents(){
   document.getElementById("clearBtn").addEventListener("click", clearForm);
   document.getElementById("similarBtn").addEventListener("click", () => {
     const title = document.getElementById("fTitle").value.trim();
-    const search = document.getElementById("searchInput");
-    search.value = title;
-    search.dispatchEvent(new Event("input"));
-    search.focus();
+    renderList(title);
   });
-  document.getElementById("searchKbBtn").addEventListener("click", () => document.getElementById("searchInput").focus());
-
-  let searchDebounceTimer = null;
-  document.getElementById("searchInput").addEventListener("input", e => {
-    const query = e.target.value;
-    clearTimeout(searchDebounceTimer);
-    searchDebounceTimer = setTimeout(() => renderList(query), 250);
+  document.getElementById("searchKbBtn").addEventListener("click", () => {
+    showView("trusted");
   });
 
   document.getElementById("viewAllLink").addEventListener("click", openViewAll);
@@ -2126,7 +2125,8 @@ function wireEvents(){
   document.addEventListener("keydown", e => {
     if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k"){
       e.preventDefault();
-      document.getElementById("searchInput").focus();
+      showView("trusted");
+      document.getElementById("trustedSearchInput").focus();
       return;
     }
     if(e.key === "Escape"){
@@ -2215,8 +2215,6 @@ async function completeInit(){
 }
 
 async function init(){
-  setIcon("searchIcon", "search");
-  setIcon("docIcon", "docWhite");
   setIcon("brandIcon", "book");
   setIcon("loginBrandIcon", "book");
   setIcon("refInfoIcon", "info");
