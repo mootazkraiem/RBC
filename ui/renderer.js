@@ -1737,7 +1737,33 @@ function renderTrustedCards(container, items){
 let _rqCache = { pending: [], waiting: [], decided: [] };
 let _rqTab = "assigned";
 async function refreshReviewQueue(){
-  const items = await _loadAllIssues();
+  // Show a real loading state immediately -- without this, a slow or
+  // failed fetch left the static "—"/"0" placeholders on screen
+  // indefinitely, which looks identical to "nothing to review" and was
+  // reported several times as "the queue is empty" when it was actually
+  // just still loading (or had silently failed).
+  const body = document.getElementById("reviewQueueBody");
+  const empty = document.getElementById("reviewQueueEmpty");
+  body.innerHTML = "";
+  empty.hidden = false;
+  empty.innerHTML = `<span class="icon icon-muted" style="width:32px;height:32px;">${iconSvg("clock")}</span><b>Loading…</b><span>Fetching submissions from the server.</span>`;
+  ["rqAssigned", "rqAllPending", "rqOldest", "rqDecided"].forEach(id => { document.getElementById(id).textContent = "…"; });
+
+  let items, audit;
+  try {
+    items = await _loadAllIssues();
+    audit = await api().list_audit();
+  } catch(e) {
+    empty.innerHTML = `<span class="icon icon-muted" style="width:32px;height:32px;">${iconSvg("xMark")}</span><b>Couldn't load the review queue</b><span>${escapeHtml(String((e && e.message) || e))} — try reopening this page.</span>`;
+    ["rqAssigned", "rqAllPending", "rqOldest", "rqDecided"].forEach(id => { document.getElementById(id).textContent = "—"; });
+    return;
+  }
+  if(items && items.apiError){
+    empty.innerHTML = `<span class="icon icon-muted" style="width:32px;height:32px;">${iconSvg("xMark")}</span><b>Couldn't load the review queue</b><span>${escapeHtml(items.apiError)}</span>`;
+    ["rqAssigned", "rqAllPending", "rqOldest", "rqDecided"].forEach(id => { document.getElementById(id).textContent = "—"; });
+    return;
+  }
+
   const pending = items.filter(i => i.status !== "solved" && i.status !== "cancelled");
   const now = Date.now();
   const weekAgo = now - 7 * 24 * 36e5;
@@ -1749,8 +1775,7 @@ async function refreshReviewQueue(){
   // exists for this on the server, so it's derived from the audit log
   // rather than invented.
   let waiting = [];
-  const audit = await api().list_audit();
-  if(audit && !audit.apiError){
+  if(audit && !audit.apiError && Array.isArray(audit)){
     const latestByIssue = new Map();
     audit.slice().reverse().forEach(a => { if(a.issue_id && !latestByIssue.has(a.issue_id)) latestByIssue.set(a.issue_id, a); });
     waiting = pending.filter(i => { const last = latestByIssue.get(i.id); return last && last.action === "request_changes"; });

@@ -199,7 +199,7 @@ class Api:
 
     def list_audit(self):
         resp, err = self._request("GET", "/audit")
-        return [] if err else resp.json()
+        return err if err else resp.json()
 
     def next_ref_id(self):
         resp, err = self._request("GET", "/issues/next-ref-id")
