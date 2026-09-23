@@ -467,8 +467,8 @@ footer{text-align:center;color:var(--muted);font-size:11.5px;padding:22px;}
   font-family:var(--rl-font-sans); color:var(--rl-ink); -webkit-font-smoothing:antialiased; box-sizing:border-box;
 }
 .rl-card{
-  width:1000px; height:560px; max-width:100%; max-height:100%;
-  display:grid; grid-template-columns:1.1fr 1fr;
+  width:940px; height:580px; max-width:100%; max-height:100%;
+  display:grid; grid-template-columns:1.1fr 1fr; grid-template-rows:1fr; align-items:stretch;
   background:var(--rl-surface); border-radius:var(--rl-radius-xl);
   box-shadow:var(--rl-shadow-card); overflow:hidden;
 }
@@ -492,11 +492,11 @@ footer{text-align:center;color:var(--muted);font-size:11.5px;padding:22px;}
 .rl-brand-chip{width:44px;height:44px;border-radius:var(--rl-radius-lg);display:grid;place-items:center;background:var(--rl-on-brand-glass);border:1px solid var(--rl-on-brand-line);}
 .rl-brand-name{font-size:15px;font-weight:700;}
 .rl-brand-name span{display:block;font-size:12px;font-weight:500;color:var(--rl-on-brand-muted);margin-top:1px;}
-.rl-h1{margin:22px 0 0;max-width:560px;font-size:29px;line-height:35px;font-weight:800;letter-spacing:-.025em;font-family:var(--rl-font-sans);}
+.rl-h1{margin:18px 0 0;max-width:560px;font-size:25px;line-height:31px;font-weight:800;letter-spacing:-.025em;font-family:var(--rl-font-sans);}
 .rl-h1 em{font-style:normal;color:var(--rl-brand-100);}
 
-.rl-journey{position:relative;margin:8px 0 0;align-self:center;width:410px;height:338px;}
-.rl-journey-scale{position:absolute;top:50%;left:50%;width:570px;height:470px;transform:translate(-50%,-50%) scale(.72);}
+.rl-journey{position:relative;margin:6px 0 0;align-self:center;width:326px;height:269px;}
+.rl-journey-scale{position:absolute;top:50%;left:50%;width:570px;height:470px;transform:translate(-50%,-50%) scale(.572);}
 .rl-journey svg.rl-track{position:absolute;inset:0;overflow:visible;}
 .rl-track .rl-base{fill:none;stroke:var(--rl-on-brand-line);stroke-width:1;}
 .rl-track .rl-outer{fill:none;stroke:var(--rl-on-brand-line);stroke-width:1;stroke-dasharray:2 8;stroke-linecap:round;}
@@ -574,28 +574,28 @@ footer{text-align:center;color:var(--muted);font-size:11.5px;padding:22px;}
 .rl-stop.rl-trusted .rl-tile svg{width:46px;height:46px;}
 .rl-stop.rl-trusted .rl-label{color:var(--rl-on-brand);font-size:14px;font-weight:700;top:calc(100% + 24px);}
 
-.rl-signin{padding:32px 56px;display:flex;flex-direction:column;justify-content:center;}
-.rl-form{width:100%;max-width:420px;}
-.rl-h2{margin:0;font-size:26px;line-height:32px;font-weight:800;letter-spacing:-.02em;font-family:var(--rl-font-sans);}
-.rl-sub{margin:6px 0 0;font-size:15px;line-height:23px;color:var(--rl-ink-muted);}
-.rl-field{margin-top:16px;}
-.rl-field:first-of-type{margin-top:22px;}
-.rl-label{display:block;font-size:14px;font-weight:700;margin-bottom:var(--rl-space-2);}
-.rl-label b{color:var(--rl-danger);}
+.rl-signin{padding:28px 48px;display:flex;flex-direction:column;justify-content:center;}
+.rl-form{width:100%;max-width:380px;}
+.rl-h2{margin:0;font-size:23px;line-height:28px;font-weight:800;letter-spacing:-.02em;font-family:var(--rl-font-sans);}
+.rl-sub{margin:5px 0 0;font-size:13.5px;line-height:20px;color:var(--rl-ink-muted);}
+.rl-field{margin-top:14px;}
+.rl-field:first-of-type{margin-top:20px;}
+.rl-field-label{display:block;font-size:13px;font-weight:700;margin-bottom:6px;color:var(--rl-ink);}
+.rl-field-label b{color:var(--rl-danger);font-weight:700;}
 .rl-input{
-  display:flex;align-items:center;gap:var(--rl-space-3);height:46px;padding:0 var(--rl-space-4);
+  display:flex;align-items:center;gap:var(--rl-space-3);height:42px;padding:0 14px;
   border:1px solid var(--rl-line);border-radius:var(--rl-radius-md);background:var(--rl-surface);color:var(--rl-ink-muted);
 }
-.rl-input svg{width:18px;height:18px;flex:none;}
+.rl-input svg{width:16px;height:16px;flex:none;}
 .rl-input input{
-  border:none;outline:none;background:transparent;flex:1;min-width:0;font:15px/1 var(--rl-font-sans);color:var(--rl-ink);
+  border:none;outline:none;background:transparent;flex:1;min-width:0;font:14px/1 var(--rl-font-sans);color:var(--rl-ink);
   padding:0; height:100%; appearance:none;
 }
 .rl-input input:focus{outline:none;box-shadow:none;}
 .rl-input input::placeholder{color:var(--rl-ink-subtle);}
 .rl-input:focus-within{border-color:var(--rl-brand-500);box-shadow:0 0 0 4px var(--rl-brand-100);}
 .rl-btn{
-  margin-top:22px;width:100%;height:48px;border:0;cursor:pointer;
+  margin-top:20px;width:100%;height:44px;border:0;cursor:pointer;
   display:flex;align-items:center;justify-content:center;gap:10px;border-radius:var(--rl-radius-md);
   background:linear-gradient(90deg,var(--rl-brand-500),var(--rl-brand-600));
   box-shadow:var(--rl-shadow-action);color:var(--rl-on-brand);font:700 16px/1 var(--rl-font-sans);
@@ -606,8 +606,12 @@ footer{text-align:center;color:var(--muted);font-size:11.5px;padding:22px;}
   padding:9px 12px;border-radius:var(--rl-radius-sm);text-align:left;
 }
 .rl-server{
-  margin-top:var(--rl-space-6);display:flex;align-items:center;gap:var(--rl-space-2);
-  font-size:12px;line-height:16px;color:var(--rl-ink-muted);
+  /* Connection status is a debug/support detail, not something the
+     production sign-in screen should surface to end users -- kept in the
+     DOM (renderer.js still writes the real value here) so it can be
+     inspected via devtools, but not shown. Real users see server info in
+     My Account instead. */
+  display:none;
 }
 .rl-server i{width:8px;height:8px;border-radius:50%;background:#16a34a;box-shadow:0 0 0 3px #dcfce7;flex:none;}
 .rl-server span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
