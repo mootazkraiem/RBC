@@ -386,12 +386,13 @@ function renderIssueCards(container, items, emptyText, variant){
       ? `<span class="row-waiting">${waitingSince(i.createdAt)}</span>
          <button type="button" class="row-review-link" data-open="${escapeAttr(i.id)}">Review <span class="icon icon-sm">${iconSvg("arrowRight")}</span></button>`
       : `<span class="status ${statusClass(i.status)}">${statusLabel(i.status)}</span>`;
+    const tMeta = typeBadgeInfo(i.type);
     return `
     <div class="issue-row" data-id="${escapeAttr(i.id)}">
-      <span class="row-icon">${iconSvg("edit")}</span>
+      <span class="row-icon">${iconSvg(tMeta.icon)}</span>
       <div class="row-body">
         <div class="row-title">${escapeHtml(i.title)}</div>
-        <div class="row-sub">${escapeHtml(i.createdBy || "—")} · Problem / Solution</div>
+        <div class="row-sub">${escapeHtml(i.createdBy || "—")} · ${tMeta.label}</div>
       </div>
       <div class="row-right">${right}</div>
     </div>`;
@@ -1614,15 +1615,16 @@ function renderMyEntriesTable(){
     const statusHtml = bucket === "changes"
       ? `<span class="status st-review">Changes requested</span>`
       : `<span class="status ${statusClass(i.status)}">${statusLabel(i.status)}</span>`;
+    const tMeta = typeBadgeInfo(i.type);
     return `
     <tr data-id="${escapeAttr(i.id)}" class="data-row">
       <td>
         <div class="entry-cell">
-          <span class="entry-type-icon">${iconSvg("edit")}</span>
+          <span class="entry-type-icon">${iconSvg(tMeta.icon)}</span>
           <div><b>${escapeHtml(i.title)}</b><span class="mono muted-small">${escapeHtml(i.id)}</span></div>
         </div>
       </td>
-      <td><span class="type-badge"><span class="icon icon-sm" data-nav-icon="edit"></span> Problem / Solution</span></td>
+      <td><span class="type-badge"><span class="icon icon-sm">${iconSvg(tMeta.icon)}</span> ${escapeHtml(tMeta.label)}</span></td>
       <td>${statusHtml}</td>
       <td>${reviewer}</td>
       <td class="muted-small">${formatDate(i.updatedAt || i.createdAt)}</td>
@@ -1689,13 +1691,16 @@ function renderTrustedCards(container, items){
     return;
   }
   container.innerHTML = items.map(i => {
-    const desc = (i.problem || "").length > 160 ? i.problem.slice(0, 160) + "…" : (i.problem || "");
+    const type = i.type || "PROBLEM_SOLUTION";
+    const descSource = type === "INFORMATION" ? i.description : type === "PROCEDURE" ? i.purpose : i.problem;
+    const desc = (descSource || "").length > 160 ? descSource.slice(0, 160) + "…" : (descSource || "");
+    const tMeta = typeBadgeInfo(type);
     return `
     <div class="trusted-card" data-open="${escapeAttr(i.id)}">
-      <span class="entry-type-icon">${iconSvg("edit")}</span>
+      <span class="entry-type-icon">${iconSvg(tMeta.icon)}</span>
       <div class="trusted-card-body">
         <div class="trusted-card-badges">
-          <span class="type-badge"><span class="icon icon-sm" data-nav-icon="edit"></span> Problem / Solution</span>
+          <span class="type-badge"><span class="icon icon-sm">${iconSvg(tMeta.icon)}</span> ${escapeHtml(tMeta.label)}</span>
           ${i.system ? `<span class="badge-pill">${escapeHtml(i.system)}</span>` : ""}
           <span class="badge-pill badge-pill-trusted"><span class="icon icon-sm" data-nav-icon="shieldCheck"></span> Trusted</span>
         </div>
@@ -1786,11 +1791,12 @@ function renderReviewQueueTab(){
     const status = _rqTab === "decided" ? statusLabel(i.status) : (beingReviewed ? "IN REVIEW" : "PENDING REVIEW");
     const statusCls = _rqTab === "decided" ? statusClass(i.status) : (beingReviewed ? "st-inprogress" : "st-review");
     const btnLabel = beingReviewed ? "Continue" : "Review";
+    const tMeta = typeBadgeInfo(i.type);
     return `
     <tr class="data-row" data-id="${escapeAttr(i.id)}">
       <td>
         <div class="entry-cell">
-          <span class="entry-type-icon">${iconSvg("edit")}</span>
+          <span class="entry-type-icon">${iconSvg(tMeta.icon)}</span>
           <div><b>${escapeHtml(i.title)}</b><span class="mono muted-small">${escapeHtml(i.id)}</span></div>
         </div>
       </td>
