@@ -192,6 +192,26 @@ class IssueStore:
             self.conn.execute("ALTER TABLE issues ADD COLUMN created_by TEXT NOT NULL DEFAULT ''")
         if "updated_by" not in existing_cols:
             self.conn.execute("ALTER TABLE issues ADD COLUMN updated_by TEXT NOT NULL DEFAULT ''")
+        # Knowledge types beyond the original Problem/Solution issue model --
+        # every existing row is a real Problem/Solution entry, so that's the
+        # safe default for entry_type. The type-specific columns are only
+        # ever populated for their own type and stay NULL otherwise.
+        if "entry_type" not in existing_cols:
+            self.conn.execute("ALTER TABLE issues ADD COLUMN entry_type TEXT NOT NULL DEFAULT 'PROBLEM_SOLUTION'")
+        if "topic" not in existing_cols:
+            self.conn.execute("ALTER TABLE issues ADD COLUMN topic TEXT")
+        if "description" not in existing_cols:
+            self.conn.execute("ALTER TABLE issues ADD COLUMN description TEXT")
+        if "context" not in existing_cols:
+            self.conn.execute("ALTER TABLE issues ADD COLUMN context TEXT")
+        if "purpose" not in existing_cols:
+            self.conn.execute("ALTER TABLE issues ADD COLUMN purpose TEXT")
+        if "prerequisites" not in existing_cols:
+            self.conn.execute("ALTER TABLE issues ADD COLUMN prerequisites TEXT")
+        if "warnings" not in existing_cols:
+            self.conn.execute("ALTER TABLE issues ADD COLUMN warnings TEXT")
+        if "additional_info" not in existing_cols:
+            self.conn.execute("ALTER TABLE issues ADD COLUMN additional_info TEXT")
         # "draft" predates the review/in_progress/critical/cancelled/solved
         # workflow -- fold any leftover draft rows into "review" (the new
         # starting state) so old data doesn't end up with an invalid status.
@@ -234,12 +254,20 @@ class IssueStore:
             "title": row["title"],
             "system": row["system"],
             "status": row["status"],
+            "type": row["entry_type"] or "PROBLEM_SOLUTION",
             "error": row["error_code"] or "",
             "apps": json.loads(row["apps_json"]),
             "problem": row["problem"],
             "root": row["root_cause"],
             "solution": row["solution"],
             "steps": json.loads(row["steps_json"]),
+            "topic": row["topic"] or "",
+            "description": row["description"] or "",
+            "context": row["context"] or "",
+            "purpose": row["purpose"] or "",
+            "prerequisites": row["prerequisites"] or "",
+            "warnings": row["warnings"] or "",
+            "additionalInfo": row["additional_info"] or "",
             "attachments": json.loads(row["attachments_json"] or "[]"),
             "createdAt": row["created_at"],
             "updatedAt": row["updated_at"],
@@ -267,21 +295,30 @@ class IssueStore:
             now = _now()
             self.conn.execute(
                 """INSERT INTO issues
-                   (id, title, system, status, error_code, apps_json, problem,
-                    root_cause, solution, steps_json, attachments_json,
+                   (id, title, system, status, entry_type, error_code, apps_json, problem,
+                    root_cause, solution, steps_json, topic, description, context,
+                    purpose, prerequisites, warnings, additional_info, attachments_json,
                     created_at, updated_at, created_by, updated_by)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (
                     ref_id,
                     issue["title"],
                     issue.get("system", ""),
                     issue.get("status", "review"),
+                    issue.get("type", "PROBLEM_SOLUTION"),
                     issue.get("error", ""),
                     json.dumps(issue.get("apps", [])),
-                    issue["problem"],
-                    issue["root"],
-                    issue["solution"],
+                    issue.get("problem", ""),
+                    issue.get("root", ""),
+                    issue.get("solution", ""),
                     json.dumps(issue.get("steps", [])),
+                    issue.get("topic", ""),
+                    issue.get("description", ""),
+                    issue.get("context", ""),
+                    issue.get("purpose", ""),
+                    issue.get("prerequisites", ""),
+                    issue.get("warnings", ""),
+                    issue.get("additionalInfo", ""),
                     "[]",
                     now, now, username, username,
                 ),
@@ -307,7 +344,9 @@ class IssueStore:
                 """UPDATE issues SET
                        title = ?, system = ?, status = ?, error_code = ?,
                        apps_json = ?, problem = ?, root_cause = ?, solution = ?,
-                       steps_json = ?, updated_at = ?, updated_by = ?
+                       steps_json = ?, topic = ?, description = ?, context = ?,
+                       purpose = ?, prerequisites = ?, warnings = ?, additional_info = ?,
+                       updated_at = ?, updated_by = ?
                    WHERE id = ?""",
                 (
                     issue["title"],
@@ -315,10 +354,17 @@ class IssueStore:
                     issue.get("status", "review"),
                     issue.get("error", ""),
                     json.dumps(issue.get("apps", [])),
-                    issue["problem"],
-                    issue["root"],
-                    issue["solution"],
+                    issue.get("problem", ""),
+                    issue.get("root", ""),
+                    issue.get("solution", ""),
                     json.dumps(issue.get("steps", [])),
+                    issue.get("topic", ""),
+                    issue.get("description", ""),
+                    issue.get("context", ""),
+                    issue.get("purpose", ""),
+                    issue.get("prerequisites", ""),
+                    issue.get("warnings", ""),
+                    issue.get("additionalInfo", ""),
                     now, username,
                     issue_id,
                 ),

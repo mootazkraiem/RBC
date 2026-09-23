@@ -217,24 +217,48 @@ def mark_notifications_seen(user: str = Depends(get_current_user)):
 
 
 # ----------------------------------------------------------------- issues
+ENTRY_TYPES = ("PROBLEM_SOLUTION", "INFORMATION", "PROCEDURE")
+
+
 class IssueIn(BaseModel):
     title: str
     system: str = ""
     status: str = "review"
+    type: str = "PROBLEM_SOLUTION"
     error: str = ""
     apps: list[str] = []
-    problem: str
-    root: str
-    solution: str
+    problem: str = ""
+    root: str = ""
+    solution: str = ""
     steps: list[list[str]] = []
+    topic: str = ""
+    description: str = ""
+    context: str = ""
+    purpose: str = ""
+    prerequisites: str = ""
+    warnings: str = ""
+    additionalInfo: str = ""
 
 
 def _validate_issue(issue: IssueIn) -> Optional[str]:
-    missing = [f for f in ("title", "problem", "root", "solution") if not getattr(issue, f)]
-    if missing:
-        return "Missing required fields: " + ", ".join(missing)
-    if not issue.apps or not issue.steps:
-        return "Missing applications or steps."
+    if issue.type not in ENTRY_TYPES:
+        return f"Invalid type '{issue.type}'. Must be one of: {', '.join(ENTRY_TYPES)}."
+    if issue.type == "PROBLEM_SOLUTION":
+        missing = [f for f in ("title", "problem", "root", "solution") if not getattr(issue, f)]
+        if missing:
+            return "Missing required fields: " + ", ".join(missing)
+        if not issue.apps or not issue.steps:
+            return "Missing applications or steps."
+    elif issue.type == "INFORMATION":
+        missing = [f for f in ("title", "topic", "description") if not getattr(issue, f)]
+        if missing:
+            return "Missing required fields: " + ", ".join(missing)
+    elif issue.type == "PROCEDURE":
+        missing = [f for f in ("title", "purpose") if not getattr(issue, f)]
+        if missing:
+            return "Missing required fields: " + ", ".join(missing)
+        if not issue.steps:
+            return "Missing steps."
     if issue.status not in ISSUE_STATUSES:
         return f"Invalid status '{issue.status}'. Must be one of: {', '.join(ISSUE_STATUSES)}."
     return None
@@ -314,6 +338,28 @@ def update_issue(issue_id: str, body: IssueIn, user: str = Depends(get_current_u
             issue_id,
         )
     return updated
+
+
+class CommentIn(BaseModel):
+    message: str
+
+
+@app.post("/issues/{issue_id}/comment")
+def comment_on_issue(issue_id: str, body: CommentIn, user: str = Depends(get_current_admin)):
+    """A reviewer sending feedback back to the author without deciding the
+    issue yet ('Request changes' in the review UI) -- status is untouched,
+    this only notifies the author. Admin-gated for the same reason status
+    changes are: it's a review action, not a content edit."""
+    current = store.get_issue(issue_id)
+    if current is None:
+        raise HTTPException(status_code=404, detail=f"No issue found with id {issue_id}.")
+    message = body.message.strip()
+    if not message:
+        raise HTTPException(status_code=400, detail="Comment cannot be empty.")
+    if current["createdBy"] and current["createdBy"] != user:
+        store.add_notification(current["createdBy"], f'{user} requested changes on "{current["title"]}": {message}', issue_id)
+    store.log_audit(user, "request_changes", issue_id, message)
+    return {"ok": True}
 
 
 # ------------------------------------------------------------ applications

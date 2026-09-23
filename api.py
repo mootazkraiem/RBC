@@ -197,6 +197,10 @@ class Api:
         resp, err = self._request("GET", f"/issues/{issue_id}/history")
         return [] if err else resp.json()
 
+    def list_audit(self):
+        resp, err = self._request("GET", "/audit")
+        return [] if err else resp.json()
+
     def next_ref_id(self):
         resp, err = self._request("GET", "/issues/next-ref-id")
         return "REF-…" if err else resp.json()["refId"]
@@ -207,6 +211,10 @@ class Api:
 
     def update_issue(self, issue_id, issue):
         resp, err = self._request("PUT", f"/issues/{issue_id}", json=issue)
+        return err if err else resp.json()
+
+    def comment_issue(self, issue_id, message):
+        resp, err = self._request("POST", f"/issues/{issue_id}/comment", json={"message": message})
         return err if err else resp.json()
 
     # -------------------------------------------------------- applications
