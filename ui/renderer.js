@@ -926,11 +926,12 @@ function showDetailView(){
   // "Solved" fully locks the issue (matches the original design); every
   // other status stays editable by anyone -- only the status field itself
   // is admin-gated, enforced separately in renderDetailEdit()/the server.
+  const isPS = (currentDetailIssue.type || "PROBLEM_SOLUTION") === "PROBLEM_SOLUTION";
   const locked = currentDetailIssue.status === "solved" && !isAdminOrAbove();
-  document.getElementById("dEditBtn").style.display = locked ? "none" : "";
+  document.getElementById("dEditBtn").style.display = (locked || !isPS) ? "none" : "";
   const lockedNote = document.getElementById("dLockedNote");
-  lockedNote.style.display = locked ? "" : "none";
-  lockedNote.textContent = "Solved — only an admin can change this";
+  lockedNote.style.display = locked ? "" : (!isPS ? "" : "none");
+  lockedNote.textContent = locked ? "Solved — only an admin can change this" : (!isPS ? "Editing this type isn't supported yet" : "");
   document.getElementById("dSaveBtn").style.display = "none";
   document.getElementById("dCancelBtn").style.display = "none";
   const reviewBar = document.getElementById("reviewBar");
@@ -969,9 +970,16 @@ async function _reviewSetStatus(newStatus, confirmOpts){
   const ok = await confirmDialog(confirmOpts);
   if(!ok) return;
   const issue = currentDetailIssue;
+  // Send every field back, not just a hand-picked subset -- IssueIn
+  // defaults any omitted field to "", so a partial body here would
+  // silently wipe an Information/Procedure entry's real content (topic,
+  // description, purpose, etc.) on every Approve/Reject/status change.
   const body = {
-    title: issue.title, system: issue.system, status: newStatus, error: issue.error,
+    title: issue.title, system: issue.system, status: newStatus, type: issue.type, error: issue.error,
     apps: issue.apps, problem: issue.problem, root: issue.root, solution: issue.solution, steps: issue.steps,
+    topic: issue.topic, description: issue.description, context: issue.context,
+    purpose: issue.purpose, prerequisites: issue.prerequisites, warnings: issue.warnings,
+    additionalInfo: issue.additionalInfo,
   };
   const result = await api().update_issue(issue.id, body);
   if(result && result.needsLogin){ closeDetail(); showLoginScreen(result.apiError); return; }
@@ -1028,6 +1036,10 @@ function reviewSaveForLater(){
   showToast("Not saved", "Review notes aren't stored between sessions yet — finish or cancel this review for now.");
 }
 function showDetailEdit(){
+  if((currentDetailIssue.type || "PROBLEM_SOLUTION") !== "PROBLEM_SOLUTION"){
+    showToast("Not available yet", "Editing Information and Procedure entries isn't supported yet -- only Problem / Solution entries can be edited right now.");
+    return;
+  }
   document.getElementById("detailView").style.display = "none";
   document.getElementById("detailEdit").style.display = "";
   document.getElementById("dEditBtn").style.display = "none";
