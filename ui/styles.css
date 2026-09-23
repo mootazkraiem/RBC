@@ -31,6 +31,7 @@
   --font-mono:"JetBrains Mono",Consolas,"Cascadia Mono",ui-monospace,monospace;
 }
 *{box-sizing:border-box;}
+body.login-open{overflow:hidden;}
 body{
   margin:0;font-family:var(--font);color:var(--ink);-webkit-font-smoothing:antialiased;
   background:

@@ -2171,6 +2171,11 @@ async function loadApplications(){
 /* ============================== login gate ============================== */
 function showLoginScreen(message){
   document.getElementById("loginScreen").classList.add("open");
+  // .app-shell sits behind the login overlay but stays in normal document
+  // flow (it's not display:none), so its own height -- easily several
+  // screens tall once real data is loaded -- was making <body> scrollable
+  // even though the fixed-position login screen itself fit in one viewport.
+  document.body.classList.add("login-open");
   const errEl = document.getElementById("loginError");
   if(message){ errEl.textContent = message; errEl.style.display = ""; }
   else { errEl.style.display = "none"; }
@@ -2179,6 +2184,7 @@ function showLoginScreen(message){
 }
 function hideLoginScreen(){
   document.getElementById("loginScreen").classList.remove("open");
+  document.body.classList.remove("login-open");
 }
 
 async function attemptLogin(){
