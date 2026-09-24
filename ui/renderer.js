@@ -696,9 +696,10 @@ async function refreshUserList(){
   if(users && users.apiError){ body.innerHTML = `<tr><td colspan="4">${escapeHtml(users.apiError)}</td></tr>`; return; }
   _usersCache = users;
 
-  document.getElementById("roleCountContributor").textContent = `${users.filter(u => u.role === "technician").length} users`;
-  document.getElementById("roleCountReviewer").textContent = `${users.filter(u => u.role === "admin").length} users`;
-  document.getElementById("roleCountAdmin").textContent = `${users.filter(u => u.role === "super_admin").length} users`;
+  const countLabel = n => `${n} ${n === 1 ? "user" : "users"}`;
+  document.getElementById("roleCountContributor").textContent = countLabel(users.filter(u => u.role === "technician").length);
+  document.getElementById("roleCountReviewer").textContent = countLabel(users.filter(u => u.role === "admin").length);
+  document.getElementById("roleCountAdmin").textContent = countLabel(users.filter(u => u.role === "super_admin").length);
 
   renderUserListTable();
 }
