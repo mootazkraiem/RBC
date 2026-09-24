@@ -1881,8 +1881,8 @@ function refreshMyAccount(){
   document.getElementById("profileUsernameField").value = currentUsername || "";
   document.getElementById("profileRoleText").textContent =
     { technician: "Contributor — capture knowledge and manage your own submissions.",
-      admin: "Admin / Reviewer — capture, plus review and validate submitted knowledge.",
-      super_admin: "Super Admin — full platform administration, plus everything a reviewer can do." }[currentRole] || currentRole;
+      admin: "Reviewer — capture, plus review and validate submitted knowledge.",
+      super_admin: "Administrator — full platform administration, plus everything a reviewer can do." }[currentRole] || roleLabel(currentRole);
   document.getElementById("cpNewPassword").value = "";
   document.getElementById("cpConfirmPassword").value = "";
   document.getElementById("cpError").style.display = "none";
