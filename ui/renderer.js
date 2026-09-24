@@ -1955,24 +1955,34 @@ function dayBucketLabel(iso){
   if(diffDays <= 7) return "Earlier this week";
   return "Older";
 }
+const NOTIF_CATEGORY_META = {
+  reviews: { label: "Review", pillClass: "notif-pill-indigo" },
+  mine: { label: "My entries", pillClass: "notif-pill-green" },
+  kb: { label: "Knowledge base", pillClass: "notif-pill-blue" },
+};
 function renderNotifPageGrouped(category){
   const list = document.getElementById("notifPageList");
   const { pending, newIssues, resolvedRequests, direct } = _lastNotifications;
   const items = [];
   if(category === "all" || category === "reviews"){
-    pending.forEach(r => items.push({ icon: "user", colorClass: "indigo", time: r.requested_at,
-      text: `<b>${escapeHtml(r.username)}</b> requested a password change`,
+    pending.forEach(r => items.push({ icon: "user", colorClass: "indigo", time: r.requested_at, cat: "reviews",
+      title: "Password change requested",
+      body: `${escapeHtml(r.username)} requested a password change.`,
       actionLabel: "Review", onClick: () => openManageUsers() }));
   }
   if(category === "all" || category === "mine"){
-    direct.forEach(n => items.push({ icon: "edit", colorClass: "amber", time: n.created_at, text: escapeHtml(n.message),
+    direct.forEach(n => items.push({ icon: "edit", colorClass: "amber", time: n.created_at, cat: "mine",
+      title: n.issue_id ? "Changes requested" : "Update",
+      body: escapeHtml(n.message),
       actionLabel: n.issue_id ? "Address feedback" : null, onClick: n.issue_id ? () => openDetail(n.issue_id, true) : null }));
-    resolvedRequests.forEach(r => items.push({ icon: "check", colorClass: r.status === "approved" ? "green" : "red", time: r.reviewed_at,
-      text: `Your password change was ${escapeHtml(r.status)}` }));
+    resolvedRequests.forEach(r => items.push({ icon: "check", colorClass: r.status === "approved" ? "green" : "red", time: r.reviewed_at, cat: "mine",
+      title: r.status === "approved" ? "Password change approved" : "Password change rejected",
+      body: `Your password change was ${escapeHtml(r.status)}.` }));
   }
   if(category === "all" || category === "kb"){
-    newIssues.forEach(i => items.push({ icon: "plus", colorClass: "blue", time: i.created_at,
-      text: `<b>${escapeHtml(i.created_by)}</b> added "${escapeHtml(i.title)}"`,
+    newIssues.forEach(i => items.push({ icon: "plus", colorClass: "blue", time: i.created_at, cat: "kb",
+      title: "New knowledge entry",
+      body: `${escapeHtml(i.created_by)} added "${escapeHtml(i.title)}".`,
       actionLabel: "View entry", onClick: () => openDetail(i.id) }));
   }
   items.sort((a, b) => new Date(b.time) - new Date(a.time));
@@ -1991,11 +2001,16 @@ function renderNotifPageGrouped(category){
   items.forEach(item => {
     const bucket = dayBucketLabel(item.time);
     if(bucket !== lastBucket){ html += `<div class="notif-day-label">${bucket}</div>`; lastBucket = bucket; }
+    const catMeta = NOTIF_CATEGORY_META[item.cat];
     html += `
       <div class="notif-page-row">
         <span class="notif-icon notif-icon-${item.colorClass}">${iconSvg(item.icon)}</span>
         <div class="notif-page-body">
-          <div class="notif-page-text">${item.text}</div>
+          <div class="notif-page-title-row">
+            <b class="notif-page-title">${escapeHtml(item.title)}</b>
+            <span class="notif-pill ${catMeta.pillClass}">${catMeta.label}</span>
+          </div>
+          <div class="notif-page-text">${item.body}</div>
           ${item.actionLabel ? `<button type="button" class="btn btn-outline btn-sm notif-page-action">${escapeHtml(item.actionLabel)}</button>` : ""}
         </div>
         <span class="notif-page-time">${formatDate(item.time)}</span>
