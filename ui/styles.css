@@ -671,6 +671,7 @@ footer{text-align:center;color:var(--muted);font-size:11.5px;padding:22px;}
 .entry-cell b{display:block;font-size:13px;font-weight:700;color:var(--ink);}
 .entry-cell .muted-small{display:block;margin-top:1px;}
 .table-empty{display:flex;flex-direction:column;align-items:center;gap:8px;padding:50px 20px;text-align:center;}
+.table-empty[hidden]{display:none;}
 .table-empty b{font-size:14px;}
 .table-empty span{font-size:12.5px;color:var(--muted);max-width:320px;}
 
@@ -678,6 +679,7 @@ footer{text-align:center;color:var(--muted);font-size:11.5px;padding:22px;}
 .search-card{padding:18px;margin-bottom:18px;}
 .search-row{display:flex;gap:12px;}
 .popular-row{display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap;}
+.popular-row[hidden]{display:none;}
 .popular-row #trustedPopularChips{display:flex;gap:8px;flex-wrap:wrap;}
 .chip-btn{background:var(--gray-bg);border:1px solid var(--border);border-radius:999px;padding:5px 12px;font-size:12px;font-weight:600;color:var(--ink);cursor:pointer;font-family:inherit;}
 .chip-btn:hover{background:var(--blue-50);border-color:var(--blue-100);color:var(--blue-dark);}
