@@ -2077,7 +2077,8 @@ function wireEvents(){
     el.addEventListener("click", () => showCaptureFormStep(el.dataset.captureType));
   });
   document.getElementById("captureChangeTypeLink").addEventListener("click", e => { e.preventDefault(); showCaptureTypeStep(); });
-  document.getElementById("contributionGuidelinesLink").addEventListener("click", e => e.preventDefault());
+  document.getElementById("contributionGuidelinesLink").addEventListener("click", () => showToast(
+    "Contribution guidelines", "Be specific and reproducible, avoid sensitive data, and check for an existing entry before capturing a new one."));
   ["fTitle","fError","fProblem","fRoot","fSolution"].forEach(id => {
     document.getElementById(id).addEventListener("input", scheduleDraftSave);
   });
