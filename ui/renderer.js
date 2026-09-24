@@ -556,13 +556,14 @@ async function refreshNotifications(){
 }
 
 function renderNotificationPopover(containerId, category){
+  const bare = containerId === "dashNotifList"; // dashboard widget already has its own heading + "View all" link
   const pop = document.getElementById(containerId || "notifPopover");
   const cat = category || "all";
   const items = buildNotifItems(cat).slice(0, 6);
 
   if(!items.length){
     pop.innerHTML = `
-      <div class="popover-header"><h4>Notifications</h4></div>
+      ${bare ? "" : `<div class="popover-header"><h4>Notifications</h4></div>`}
       <div class="notif-empty">
         <span class="notif-empty-icon">${iconSvg("bell")}</span>
         <div class="muted-small">You're all caught up.</div>
@@ -570,7 +571,7 @@ function renderNotificationPopover(containerId, category){
     return;
   }
   pop.innerHTML = `
-    <div class="popover-header"><h4>Notifications</h4><span class="notif-total">${items.length}</span></div>
+    ${bare ? "" : `<div class="popover-header"><h4>Notifications</h4><span class="notif-total">${items.length}</span></div>`}
     <div class="notif-pop-list">
       ${items.map((item, idx) => `
         <button type="button" class="notif-pop-item" data-notif-idx="${idx}">
@@ -583,13 +584,13 @@ function renderNotificationPopover(containerId, category){
         </button>
       `).join("")}
     </div>
-    <button type="button" class="notif-pop-viewall" data-view="notifications">View all notifications <span class="icon icon-sm" data-nav-icon="arrowRight"></span></button>`;
+    ${bare ? "" : `<button type="button" class="notif-pop-viewall" data-view="notifications">View all notifications <span class="icon icon-sm" data-nav-icon="arrowRight"></span></button>`}`;
   pop.querySelectorAll("[data-notif-idx]").forEach(btn => {
     const item = items[Number(btn.getAttribute("data-notif-idx"))];
     if(item.onClick) btn.addEventListener("click", () => { pop.classList.remove("open"); item.onClick(); });
   });
   const viewAllBtn = pop.querySelector(".notif-pop-viewall");
-  viewAllBtn.addEventListener("click", () => { pop.classList.remove("open"); showView("notifications"); });
+  if(viewAllBtn) viewAllBtn.addEventListener("click", () => { pop.classList.remove("open"); showView("notifications"); });
   pop.querySelectorAll("[data-nav-icon]").forEach(el => { el.innerHTML = iconSvg(el.dataset.navIcon); });
 }
 
