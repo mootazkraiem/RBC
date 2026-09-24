@@ -11,21 +11,25 @@
 }
 
 :root{
-  /* RCK design spec palette */
-  --blue:#2f5bea; --blue-dark:#1d3fc4; --blue-50:#eef2fe; --blue-100:#dce4fc;
-  --secondary:#6d4ae0; --teal:#0f8a7a;
+  /* RCK design spec palette -- calibrated against the RCK Notifications.html
+     reference (extracted via computed-style sampling across its embedded
+     frames, not eyeballed): ink/amber/red were already exact matches;
+     blue/secondary/teal/green were measurably off and are corrected here. */
+  --blue:#1d4ed8; --blue-dark:#1a40b0; --blue-50:#eef3ff; --blue-100:#dbe6fe;
+  --secondary:#5b3fd0; --teal:#0e7490;
   --navy:#0b1f4d;
-  --ink:#0f172a; --muted:#5b6678; --border:#e5e9f0; --bg:#f5f7fb; --card:#ffffff;
-  --green-bg:#dcfce7; --green-fg:#16a34a;
+  --ink:#0f172a; --muted:#5b667a; --border:#e5e9f0; --bg:#f5f7fb; --card:#ffffff;
+  --green-bg:#e4f4ec; --green-fg:#0b7a55;
   --amber-bg:#fef3c7; --amber-fg:#b45309;
   --gray-bg:#f3f4f6; --gray-fg:#6b7280;
   --red-bg:#fee2e2; --red-fg:#dc2626;
-  --indigo-bg:#eef2ff; --indigo-fg:#4338ca;
-  --shadow-xs:0 1px 2px rgba(15,23,42,.05);
-  --shadow-sm:0 1px 2px rgba(15,23,42,.04), 0 2px 6px rgba(15,23,42,.05);
-  --shadow-md:0 8px 20px rgba(15,23,42,.07), 0 2px 6px rgba(15,23,42,.05);
-  --shadow-lg:0 24px 56px rgba(15,23,42,.18);
-  --radius-xl:20px; --radius-lg:16px; --radius-md:10px; --radius-sm:8px;
+  --indigo-bg:#efebfd; --indigo-fg:#5b3fd0;
+  --shadow-xs:0 1px 3px rgba(15,23,42,.12);
+  --shadow-sm:0 1px 3px 0 rgba(15,23,42,.12);
+  --shadow-md:0 8px 20px rgba(15,23,42,.10), 0 2px 6px rgba(15,23,42,.06);
+  --shadow-lg:0 24px 60px -24px rgba(15,23,42,.28);
+  --shadow-action:0 10px 24px -10px rgba(29,78,216,.6);
+  --radius-xl:24px; --radius-lg:16px; --radius-md:12px; --radius-sm:10px;
   --font:"Plus Jakarta Sans","Segoe UI",-apple-system,BlinkMacSystemFont,Roboto,Arial,sans-serif;
   --font-display:"Plus Jakarta Sans","Segoe UI",-apple-system,BlinkMacSystemFont,Roboto,Arial,sans-serif;
   --font-mono:"JetBrains Mono",Consolas,"Cascadia Mono",ui-monospace,monospace;
