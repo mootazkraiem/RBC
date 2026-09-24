@@ -555,71 +555,42 @@ async function refreshNotifications(){
   }
 }
 
-function notifItemHtml({ icon, colorClass, text, time, tag = "button", dataAttrs = "" }){
-  const el = tag === "button" ? "button" : "div";
-  const typeAttr = tag === "button" ? 'type="button"' : "";
-  return `
-    <${el} ${typeAttr} class="notif-item" ${dataAttrs}>
-      <span class="notif-icon notif-icon-${colorClass}">${iconSvg(icon)}</span>
-      <span class="notif-body">
-        <span class="notif-text">${text}</span>
-        <span class="notif-time">${formatDate(time)}</span>
-      </span>
-    </${el}>`;
-}
-
 function renderNotificationPopover(containerId, category){
   const pop = document.getElementById(containerId || "notifPopover");
-  const { pending, newIssues, resolvedRequests, direct } = _lastNotifications;
   const cat = category || "all";
-  const total = (cat === "all" || cat === "reviews" ? pending.length : 0)
-    + (cat === "all" || cat === "kb" ? newIssues.length : 0)
-    + (cat === "all" || cat === "mine" ? resolvedRequests.length + direct.length : 0);
-  const sections = [];
-  if(pending.length && (cat === "all" || cat === "reviews")){
-    sections.push('<div class="notif-section-label">Needs your review</div>' + pending.map(r => notifItemHtml({
-      icon: "user", colorClass: "indigo",
-      text: `<b>${escapeHtml(r.username)}</b> requested a password change`,
-      time: r.requested_at, dataAttrs: 'data-open-manage-users="1"',
-    })).join(""));
-  }
-  if(direct.length && (cat === "all" || cat === "mine")){
-    sections.push('<div class="notif-section-label">Updates</div>' + direct.map(n => notifItemHtml({
-      icon: "edit", colorClass: "amber", text: escapeHtml(n.message), time: n.created_at,
-      dataAttrs: n.issue_id ? `data-open-issue="${escapeAttr(n.issue_id)}"` : "",
-    })).join(""));
-  }
-  if(newIssues.length && (cat === "all" || cat === "kb")){
-    sections.push('<div class="notif-section-label">New in the knowledge base</div>' + newIssues.map(i => notifItemHtml({
-      icon: "plus", colorClass: "blue",
-      text: `<b>${escapeHtml(i.created_by)}</b> added "${escapeHtml(i.title)}"`,
-      time: i.created_at, dataAttrs: `data-open-issue="${escapeAttr(i.id)}"`,
-    })).join(""));
-  }
-  if(resolvedRequests.length && (cat === "all" || cat === "mine")){
-    sections.push('<div class="notif-section-label">Your account</div>' + resolvedRequests.map(r => notifItemHtml({
-      icon: "check", colorClass: r.status === "approved" ? "green" : "red",
-      text: `Your password change was ${escapeHtml(r.status)}`, time: r.reviewed_at, tag: "div",
-    })).join(""));
-  }
-  if(sections.length){
-    pop.innerHTML = `
-      <div class="popover-header"><h4>Notifications</h4><span class="notif-total">${total}</span></div>
-      ${sections.join("")}`;
-  } else {
+  const items = buildNotifItems(cat).slice(0, 6);
+
+  if(!items.length){
     pop.innerHTML = `
       <div class="popover-header"><h4>Notifications</h4></div>
       <div class="notif-empty">
         <span class="notif-empty-icon">${iconSvg("bell")}</span>
         <div class="muted-small">You're all caught up.</div>
       </div>`;
+    return;
   }
-  pop.querySelectorAll("[data-open-manage-users]").forEach(btn => {
-    btn.addEventListener("click", () => { pop.classList.remove("open"); openManageUsers(); });
+  pop.innerHTML = `
+    <div class="popover-header"><h4>Notifications</h4><span class="notif-total">${items.length}</span></div>
+    <div class="notif-pop-list">
+      ${items.map((item, idx) => `
+        <button type="button" class="notif-pop-item" data-notif-idx="${idx}">
+          <span class="notif-icon notif-icon-${item.colorClass}">${iconSvg(item.icon)}</span>
+          <span class="notif-pop-body">
+            <span class="notif-pop-title">${escapeHtml(item.title)}</span>
+            <span class="notif-pop-text">${item.body}</span>
+            <span class="notif-time">${formatDate(item.time)}</span>
+          </span>
+        </button>
+      `).join("")}
+    </div>
+    <button type="button" class="notif-pop-viewall" data-view="notifications">View all notifications <span class="icon icon-sm" data-nav-icon="arrowRight"></span></button>`;
+  pop.querySelectorAll("[data-notif-idx]").forEach(btn => {
+    const item = items[Number(btn.getAttribute("data-notif-idx"))];
+    if(item.onClick) btn.addEventListener("click", () => { pop.classList.remove("open"); item.onClick(); });
   });
-  pop.querySelectorAll("[data-open-issue]").forEach(btn => {
-    btn.addEventListener("click", () => { pop.classList.remove("open"); openDetail(btn.getAttribute("data-open-issue")); });
-  });
+  const viewAllBtn = pop.querySelector(".notif-pop-viewall");
+  viewAllBtn.addEventListener("click", () => { pop.classList.remove("open"); showView("notifications"); });
+  pop.querySelectorAll("[data-nav-icon]").forEach(el => { el.innerHTML = iconSvg(el.dataset.navIcon); });
 }
 
 async function refreshPasswordRequests(){
@@ -1961,8 +1932,11 @@ const NOTIF_CATEGORY_META = {
   mine: { label: "My entries", pillClass: "notif-pill-green" },
   kb: { label: "Knowledge base", pillClass: "notif-pill-blue" },
 };
-function renderNotifPageGrouped(category){
-  const list = document.getElementById("notifPageList");
+// Single source of truth for every notification surface (bell popover,
+// dashboard widget, full Notifications page) -- these used to be built by
+// two separate, drifting code paths, which is how the popover silently
+// kept its old row design after the page was redesigned.
+function buildNotifItems(category){
   const { pending, newIssues, resolvedRequests, direct } = _lastNotifications;
   const items = [];
   if(category === "all" || category === "reviews"){
@@ -1987,6 +1961,12 @@ function renderNotifPageGrouped(category){
       actionLabel: "View entry", onClick: () => openDetail(i.id) }));
   }
   items.sort((a, b) => new Date(b.time) - new Date(a.time));
+  return items;
+}
+function renderNotifPageGrouped(category){
+  const list = document.getElementById("notifPageList");
+  const { pending, newIssues, resolvedRequests, direct } = _lastNotifications;
+  const items = buildNotifItems(category);
 
   document.getElementById("tabCountNotifAll").textContent = pending.length + newIssues.length + resolvedRequests.length + direct.length;
   document.getElementById("tabCountNotifReviews").textContent = pending.length;
