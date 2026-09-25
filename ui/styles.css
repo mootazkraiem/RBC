@@ -1059,3 +1059,30 @@ body{background:var(--bg);background-attachment:scroll;}
 .trusted-card-badges{gap:8px;}
 .trusted-card-badges > *{font-size:12px;}
 .search-card{padding:20px;}
+
+/* ---------- trusted knowledge: filter bar under search, full-width results ---------- */
+.tk-filter-bar{display:flex;align-items:flex-end;gap:16px;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);flex-wrap:wrap;}
+.tk-filter{display:flex;flex-direction:column;gap:6px;min-width:200px;flex:0 1 240px;}
+.tk-filter label{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0;}
+.tk-filter select{padding:10px 14px;font-size:14.5px;}
+.tk-clear{margin-left:auto;font-size:13.5px;font-weight:700;color:var(--blue);cursor:pointer;padding-bottom:12px;}
+.tk-clear:hover{color:var(--blue-dark);text-decoration:underline;}
+.tk-list-card{padding:0;overflow:hidden;}
+.tk-list-card .trusted-card{padding:22px 28px;}
+.tk-search-card .popular-row{margin-top:14px;}
+
+/* ---------- pending password requests ---------- */
+.req-row{display:flex;align-items:center;gap:16px;padding:16px 20px;border-bottom:1px solid var(--border);}
+.req-row:last-child{border-bottom:none;}
+.req-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px;}
+.req-title-line{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.req-name{font-size:15.5px;font-weight:700;color:var(--ink);}
+.req-meta{display:flex;align-items:center;gap:6px;font-size:13.5px;color:var(--muted);}
+.req-meta .icon{width:13px;height:13px;}
+.req-actions{display:flex;gap:10px;flex-shrink:0;}
+.req-btn{font-family:inherit;font-size:14px;font-weight:700;padding:9px 18px;border-radius:999px;cursor:pointer;border:1px solid var(--border);background:#fff;}
+.req-btn-approve{background:var(--blue);border-color:var(--blue);color:#fff;}
+.req-btn-approve:hover{background:var(--blue-dark);}
+.req-btn-reject{color:var(--red-fg);}
+.req-btn-reject:hover{background:var(--red-bg);border-color:var(--red-bg);}
+#pwRequestListBody{border:1px solid var(--border);border-radius:var(--radius-md);overflow:hidden;}

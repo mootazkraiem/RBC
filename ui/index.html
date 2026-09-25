@@ -744,7 +744,7 @@
     </button>
   </div>
 
-  <div class="card search-card">
+  <div class="card search-card tk-search-card">
     <div class="search-row">
       <div class="searchbar searchbar-lg">
         <span class="icon icon-muted" data-nav-icon="search"></span>
@@ -752,31 +752,32 @@
       </div>
       <button class="btn btn-primary" id="trustedSearchBtn">Search</button>
     </div>
+    <div class="tk-filter-bar">
+      <div class="tk-filter">
+        <label class="no-margin" for="trustedFilterApp">System / application</label>
+        <select id="trustedFilterApp"><option value="">Any application</option></select>
+      </div>
+      <div class="tk-filter">
+        <label class="no-margin" for="trustedFilterAuthor">Author</label>
+        <select id="trustedFilterAuthor"><option value="">Any author</option></select>
+      </div>
+      <div class="tk-filter">
+        <label class="no-margin" for="trustedSort">Sort</label>
+        <select id="trustedSort">
+          <option value="recent">Recently validated</option>
+          <option value="title">Title (A–Z)</option>
+        </select>
+      </div>
+      <a class="tk-clear" id="trustedClearFilters">Clear all</a>
+    </div>
     <div class="popular-row" id="trustedPopularRow" hidden>
       <span class="muted-small">Popular:</span>
       <div id="trustedPopularChips"></div>
     </div>
   </div>
 
-  <div class="trusted-cols">
-    <aside class="card filters-card">
-      <div class="filters-head">
-        <h3>Filters</h3>
-        <a id="trustedClearFilters">Clear all</a>
-      </div>
-      <label class="no-margin">System / application</label>
-      <select id="trustedFilterApp"><option value="">Any application</option></select>
-      <label>Author</label>
-      <select id="trustedFilterAuthor"><option value="">Any author</option></select>
-      <label>Sort</label>
-      <select id="trustedSort">
-        <option value="recent">Recently validated</option>
-        <option value="title">Title (A–Z)</option>
-      </select>
-    </aside>
-    <div class="card" id="trustedListCard">
-      <div id="trustedList"></div>
-    </div>
+  <div class="card tk-list-card" id="trustedListCard">
+    <div id="trustedList"></div>
   </div>
 </section>
 

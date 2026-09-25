@@ -644,11 +644,16 @@ async function refreshPasswordRequests(){
   if(requests && requests.apiError){ body.innerHTML = `<div class="user-row">${escapeHtml(requests.apiError)}</div>`; return; }
   if(!requests.length){ body.innerHTML = `<div class="user-row muted-small">No pending requests.</div>`; return; }
   body.innerHTML = requests.map(r => `
-      <div class="user-row">
-        <span class="user-row-name">${escapeHtml(r.username)}</span>
-        <span class="muted-small">${formatDate(r.requested_at)}</span>
-        <button type="button" class="btn-link" data-approve="${r.id}">Approve</button>
-        <button type="button" class="btn-link btn-link-danger" data-reject="${r.id}">Reject</button>
+      <div class="req-row">
+        <span class="notif-icon notif-icon-tile notif-icon-indigo">${iconSvg("user")}</span>
+        <div class="req-main">
+          <div class="req-title-line"><b class="req-name">${escapeHtml(r.username)}</b><span class="notif-pill notif-pill-indigo">Password change</span></div>
+          <div class="req-meta"><span class="icon icon-sm">${iconSvg("clock")}</span>Requested ${formatDate(r.requested_at)}</div>
+        </div>
+        <div class="req-actions">
+          <button type="button" class="req-btn req-btn-reject" data-reject="${r.id}">Reject</button>
+          <button type="button" class="req-btn req-btn-approve" data-approve="${r.id}">Approve</button>
+        </div>
       </div>`).join("");
   body.querySelectorAll("[data-approve]").forEach(btn => {
     btn.addEventListener("click", async () => {
