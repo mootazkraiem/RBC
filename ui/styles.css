@@ -1005,3 +1005,26 @@ body{background:var(--bg);background-attachment:scroll;}
 .table-card .data-table tr.data-row{display:block;}
 .table-card .data-table tr.data-row > td{display:block;}
 .side-link-locked:hover,.side-link-locked.active:hover{background:none;}
+
+/* ---------- capture form screens: page padding + reference polish ---------- */
+.capture-form-screen{padding:26px 36px 32px;max-width:1480px;margin:0 auto;}
+.capture-form-screen main{padding:0;margin:22px 0 0;max-width:none;gap:24px;}
+.back-link{font-size:14px;margin-bottom:18px;}
+.capture-stepper .cs-step{font-size:14.5px;}
+#issueList .row-title-line{flex-direction:column;align-items:flex-start;gap:5px;}
+#issueList .row-title{white-space:normal;overflow:visible;}
+#issueList .issue-row{align-items:flex-start;}
+.sidebar-card{padding:24px;}
+.hint-box{font-size:13.5px;padding:16px;border-radius:var(--radius-md);}
+.attach-btn,.attach-tile{font-size:14px;}
+
+/* ---------- review entry / detail modal ---------- */
+.modal{max-width:800px;border-radius:24px;}
+.modal-body{padding:26px 30px 30px;}
+.decision-option{padding:16px 18px;gap:14px;border-radius:14px;margin-bottom:10px;align-items:center;}
+.decision-icon{width:36px;height:36px;}
+.decision-text b{font-size:15px;}
+.decision-text span{font-size:13.5px;}
+.decision-option.decision-selected[data-decision="approve"]{background:#fff;box-shadow:0 0 0 3px var(--green-bg);}
+.decision-option.decision-selected[data-decision="request_changes"]{background:#fff;box-shadow:0 0 0 3px var(--amber-bg);}
+.decision-option.decision-selected[data-decision="reject"]{background:#fff;box-shadow:0 0 0 3px var(--red-bg);}
