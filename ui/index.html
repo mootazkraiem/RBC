@@ -1302,6 +1302,66 @@
       <div id="dHistory" class="user-list"></div>
     </div>
 
+    <div class="modal-body" id="detailEditInfo" style="display:none;">
+      <div class="row2">
+        <div>
+          <label>Title <span class="req">*</span></label>
+          <input type="text" id="eiTitle">
+        </div>
+        <div>
+          <label>Status</label>
+          <select id="eiStatus">
+            <option value="review">Review</option>
+            <option value="in_progress">In Progress</option>
+            <option value="critical">Critical</option>
+            <option value="cancelled">Cancelled</option>
+            <option value="solved">Solved</option>
+          </select>
+        </div>
+      </div>
+      <label>Topic <span class="req">*</span></label>
+      <input type="text" id="eiTopic">
+      <label>Description <span class="req">*</span></label>
+      <textarea id="eiDescription" maxlength="5000"></textarea>
+      <label>Context <span class="optional">(Optional)</span></label>
+      <textarea id="eiContext" maxlength="3000"></textarea>
+    </div>
+
+    <div class="modal-body" id="detailEditProc" style="display:none;">
+      <div class="row2">
+        <div>
+          <label>Title <span class="req">*</span></label>
+          <input type="text" id="epTitle">
+        </div>
+        <div>
+          <label>Status</label>
+          <select id="epStatus">
+            <option value="review">Review</option>
+            <option value="in_progress">In Progress</option>
+            <option value="critical">Critical</option>
+            <option value="cancelled">Cancelled</option>
+            <option value="solved">Solved</option>
+          </select>
+        </div>
+      </div>
+      <label>Purpose <span class="req">*</span></label>
+      <textarea id="epPurpose" maxlength="2000"></textarea>
+      <label>Prerequisites <span class="optional">(Optional)</span></label>
+      <textarea id="epPrereqs" maxlength="2000"></textarea>
+      <div class="steps-head-row">
+        <label class="no-margin">Steps <span class="req">*</span></label>
+        <button type="button" class="btn btn-outline btn-sm" id="epAddStepBtn">+ Add Step</button>
+      </div>
+      <div class="steps">
+        <div class="steps-head"><div>Step</div><div>Action</div><div>Application</div><div></div></div>
+        <div id="epStepsBody"></div>
+      </div>
+      <label>Important notes / warnings <span class="optional">(Optional)</span></label>
+      <textarea id="epWarnings" maxlength="2000"></textarea>
+      <label>Additional information <span class="optional">(Optional)</span></label>
+      <textarea id="epAdditional" maxlength="3000"></textarea>
+    </div>
+
     <div class="modal-body" id="detailEdit" style="display:none;">
       <div class="row2">
         <div>

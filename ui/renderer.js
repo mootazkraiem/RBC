@@ -957,16 +957,18 @@ function renderDetailEdit(issue){
 
 function showDetailView(){
   document.getElementById("detailEdit").style.display = "none";
+  document.getElementById("detailEditInfo").style.display = "none";
+  document.getElementById("detailEditProc").style.display = "none";
   document.getElementById("detailView").style.display = "";
   // "Solved" fully locks the issue (matches the original design); every
   // other status stays editable by anyone -- only the status field itself
   // is admin-gated, enforced separately in renderDetailEdit()/the server.
   const isPS = (currentDetailIssue.type || "PROBLEM_SOLUTION") === "PROBLEM_SOLUTION";
   const locked = currentDetailIssue.status === "solved" && !isAdminOrAbove();
-  document.getElementById("dEditBtn").style.display = (locked || !isPS) ? "none" : "";
+  document.getElementById("dEditBtn").style.display = locked ? "none" : "";
   const lockedNote = document.getElementById("dLockedNote");
-  lockedNote.style.display = locked ? "" : (!isPS ? "" : "none");
-  lockedNote.textContent = locked ? "Solved — only an admin can change this" : (!isPS ? "Editing this type isn't supported yet" : "");
+  lockedNote.style.display = locked ? "" : "none";
+  lockedNote.textContent = locked ? "Solved — only an admin can change this" : "";
   document.getElementById("dSaveBtn").style.display = "none";
   document.getElementById("dCancelBtn").style.display = "none";
   const reviewBar = document.getElementById("reviewBar");
@@ -1071,16 +1073,42 @@ function reviewSaveForLater(){
   showToast("Not saved", "Review notes aren't stored between sessions yet — finish or cancel this review for now.");
 }
 function showDetailEdit(){
-  if((currentDetailIssue.type || "PROBLEM_SOLUTION") !== "PROBLEM_SOLUTION"){
-    showToast("Not available yet", "Editing Information and Procedure entries isn't supported yet -- only Problem / Solution entries can be edited right now.");
-    return;
-  }
+  const type = currentDetailIssue.type || "PROBLEM_SOLUTION";
   document.getElementById("detailView").style.display = "none";
-  document.getElementById("detailEdit").style.display = "";
+  document.getElementById("detailEdit").style.display = type === "PROBLEM_SOLUTION" ? "" : "none";
+  document.getElementById("detailEditInfo").style.display = type === "INFORMATION" ? "" : "none";
+  document.getElementById("detailEditProc").style.display = type === "PROCEDURE" ? "" : "none";
   document.getElementById("dEditBtn").style.display = "none";
   document.getElementById("dSaveBtn").style.display = "";
   document.getElementById("dCancelBtn").style.display = "";
-  renderDetailEdit(currentDetailIssue);
+  if(type === "INFORMATION") renderDetailEditInfo(currentDetailIssue);
+  else if(type === "PROCEDURE") renderDetailEditProc(currentDetailIssue);
+  else renderDetailEdit(currentDetailIssue);
+}
+function _setEditStatus(id, issue){
+  const sel = document.getElementById(id);
+  sel.value = issue.status;
+  sel.disabled = !isAdminOrAbove();
+  sel.title = sel.disabled ? "Only an admin can change an issue's status" : "";
+}
+function renderDetailEditInfo(issue){
+  document.getElementById("eiTitle").value = issue.title || "";
+  _setEditStatus("eiStatus", issue);
+  document.getElementById("eiTopic").value = issue.topic || "";
+  document.getElementById("eiDescription").value = issue.description || "";
+  document.getElementById("eiContext").value = issue.context || "";
+}
+function renderDetailEditProc(issue){
+  document.getElementById("epTitle").value = issue.title || "";
+  _setEditStatus("epStatus", issue);
+  document.getElementById("epPurpose").value = issue.purpose || "";
+  document.getElementById("epPrereqs").value = issue.prerequisites || "";
+  document.getElementById("epWarnings").value = issue.warnings || "";
+  document.getElementById("epAdditional").value = issue.additionalInfo || "";
+  const body = document.getElementById("epStepsBody");
+  clearSteps(body);
+  (issue.steps || []).forEach(([action, app]) => addStep(body, action, app));
+  if(!(issue.steps || []).length) addStep(body);
 }
 
 const HISTORY_ACTION_LABEL = {
@@ -1119,7 +1147,42 @@ async function openDetail(id, editAfter){
 }
 function closeDetail(){ closeOverlay("detailOverlay"); }
 
+async function saveDetailEditOtherType(){
+  const issue = currentDetailIssue;
+  const base = { type: issue.type, system: issue.system || "", apps: (issue.apps || []).slice() };
+  let payload;
+  if(issue.type === "INFORMATION"){
+    const title = document.getElementById("eiTitle").value.trim();
+    const topic = document.getElementById("eiTopic").value.trim();
+    const description = document.getElementById("eiDescription").value.trim();
+    if(!title || !topic || !description){ alert("Please fill in the title, topic and description before saving."); return; }
+    payload = { ...base, title, status: document.getElementById("eiStatus").value, topic, description,
+      context: document.getElementById("eiContext").value.trim() };
+  } else {
+    const title = document.getElementById("epTitle").value.trim();
+    const purpose = document.getElementById("epPurpose").value.trim();
+    const steps = collectSteps(document.getElementById("epStepsBody"));
+    if(!title || !purpose || steps.length === 0){ alert("Please fill in the title, purpose and at least one step before saving."); return; }
+    payload = { ...base, title, status: document.getElementById("epStatus").value, purpose,
+      prerequisites: document.getElementById("epPrereqs").value.trim(), steps,
+      warnings: document.getElementById("epWarnings").value.trim(),
+      additionalInfo: document.getElementById("epAdditional").value.trim() };
+  }
+  const result = await api().update_issue(issue.id, payload);
+  if(result && result.apiError){
+    if(result.needsLogin) showLoginScreen(result.apiError);
+    else alert(result.apiError);
+    return;
+  }
+  currentDetailIssue = result;
+  showDetailView();
+  renderHistory(await api().get_issue_history(currentDetailIssue.id));
+  await renderList();
+  showToast("Entry updated", `"${result.title}" was saved.`);
+}
+
 async function saveDetailEdit(){
+  if((currentDetailIssue.type || "PROBLEM_SOLUTION") !== "PROBLEM_SOLUTION") return saveDetailEditOtherType();
   const title = document.getElementById("eTitle").value.trim();
   const status = document.getElementById("eStatus").value;
   const error = document.getElementById("eError").value.trim();
@@ -2283,6 +2346,7 @@ function wireEvents(){
 
   document.getElementById("addStepBtn").addEventListener("click", () => addStep(document.getElementById("stepsBody")));
   document.getElementById("eAddStepBtn").addEventListener("click", () => addStep(document.getElementById("eStepsBody")));
+  document.getElementById("epAddStepBtn").addEventListener("click", () => addStep(document.getElementById("epStepsBody")));
   document.getElementById("addProcStepBtn").addEventListener("click", () => addStep(document.getElementById("procStepsBody")));
 
   document.getElementById("iDescription").addEventListener("input", e => {
