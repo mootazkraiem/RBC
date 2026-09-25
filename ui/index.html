@@ -948,6 +948,7 @@
     <aside class="card account-tabs">
       <button class="side-link active" data-account-tab="profile"><span class="icon icon-sm" data-nav-icon="user"></span> Profile</button>
       <button class="side-link" data-account-tab="security"><span class="icon icon-sm" data-nav-icon="lock"></span> Security</button>
+      <button class="side-link" data-account-tab="notifications"><span class="icon icon-sm" data-nav-icon="bell"></span> Notifications</button>
       <button class="side-link" data-account-tab="preferences"><span class="icon icon-sm" data-nav-icon="settings"></span> Preferences</button>
       <button class="side-link" data-account-tab="activity"><span class="icon icon-sm" data-nav-icon="clock"></span> Activity</button>
     </aside>
@@ -1000,6 +1001,18 @@
         <div class="actions" style="margin-top:12px;">
           <button class="btn btn-primary" id="cpRequestBtn">Request password change</button>
         </div>
+      </div>
+
+      <div class="card account-panel notif-prefs-card" id="accountPanel-notifications" style="display:none;">
+        <div class="notif-prefs-head">
+          <div>
+            <h3>Notification preferences</h3>
+            <p class="muted-small">Choose which notifications appear in RCK. Only notifications that apply to your role are listed.</p>
+          </div>
+          <span class="notif-saved-chip">All changes saved</span>
+        </div>
+        <div class="notif-prefs-table" id="notifPrefsTable"></div>
+        <div class="notif-prefs-foot">Preferences are stored on this device. Email notifications are not available in this deployment.</div>
       </div>
 
       <div class="card account-panel" id="accountPanel-preferences" style="display:none;">

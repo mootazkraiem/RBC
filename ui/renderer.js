@@ -631,7 +631,7 @@ function renderNotificationPopover(containerId, category){
   const viewAllBtn = pop.querySelector(".notif-pop-viewall");
   if(viewAllBtn) viewAllBtn.addEventListener("click", () => { close(); showView("notifications"); });
   const gear = pop.querySelector(".notif-pop-gear");
-  if(gear){ gear.style.cursor = "pointer"; gear.addEventListener("click", () => { close(); showView("my-account"); setAccountTab("preferences"); }); }
+  if(gear){ gear.style.cursor = "pointer"; gear.addEventListener("click", () => { close(); showView("my-account"); setAccountTab("notifications"); }); }
   const markAll = pop.querySelector("[data-pop-markall]");
   if(markAll) markAll.addEventListener("click", e => { e.stopPropagation(); setNotifRead(buildNotifItems("all"), true); refreshNotifBadgesOnly(); renderNotificationPopover(containerId, category); });
   pop.querySelectorAll("[data-nav-icon]").forEach(el => { el.innerHTML = iconSvg(el.dataset.navIcon); });
@@ -1884,6 +1884,7 @@ function setAccountTab(tab){
   document.querySelectorAll('[data-account-tab]').forEach(el => el.classList.toggle("active", el.dataset.accountTab === tab));
   document.querySelectorAll(".account-panel").forEach(el => { el.style.display = el.id === "accountPanel-" + tab ? "" : "none"; });
   if(tab === "activity") refreshActivity();
+  if(tab === "notifications") renderNotifPrefs();
 }
 function refreshMyAccount(){
   const initials = (currentDisplayName || "?").trim().split(/\s+/).map(p => p[0]).slice(0, 2).join("").toUpperCase();
@@ -1977,6 +1978,38 @@ const NOTIF_CATEGORY_META = {
 // dashboard widget, full Notifications page) -- these used to be built by
 // two separate, drifting code paths, which is how the popover silently
 // kept its old row design after the page was redesigned.
+
+const NOTIF_PREF_ROWS = [
+  { key: "reviews", icon: "clipboardCheck", color: "indigo", title: "Review assignments", tag: "Reviewers", desc: "Password requests and other items assigned to you for action.", reviewersOnly: true },
+  { key: "mine", icon: "fileText", color: "green", title: "My entry updates", desc: "Changes requested, approvals and other updates on your entries." },
+  { key: "kb", icon: "shieldCheck", color: "teal", title: "Trusted knowledge updates", desc: "New entries added to the knowledge base." },
+];
+function _prefStoreKey(){ return "rck.notifPrefs." + (currentUsername || "anon"); }
+function loadNotifPrefs(){
+  try { return Object.assign({ reviews: true, mine: true, kb: true }, JSON.parse(localStorage.getItem(_prefStoreKey()) || "{}")); }
+  catch(e){ return { reviews: true, mine: true, kb: true }; }
+}
+function saveNotifPref(key, on){
+  const p = loadNotifPrefs(); p[key] = on;
+  try { localStorage.setItem(_prefStoreKey(), JSON.stringify(p)); } catch(e){}
+}
+function renderNotifPrefs(){
+  const el = document.getElementById("notifPrefsTable");
+  if(!el) return;
+  const prefs = loadNotifPrefs();
+  const rows = NOTIF_PREF_ROWS.filter(r => !r.reviewersOnly || isAdminOrAbove());
+  el.innerHTML = `<div class="notif-prefs-cols"><span>Notification</span><span>In-app</span></div>` + rows.map(r => `
+    <div class="notif-prefs-row">
+      <span class="notif-icon notif-icon-tile notif-icon-${r.color}">${iconSvg(r.icon)}</span>
+      <div class="notif-prefs-text"><b>${r.title}</b>${r.tag ? `<span class="notif-pill notif-pill-gray">${r.tag}</span>` : ""}<div class="muted-small">${r.desc}</div></div>
+      <label class="switch"><input type="checkbox" data-pref="${r.key}" ${prefs[r.key] ? "checked" : ""}><span class="switch-track"></span></label>
+    </div>`).join("");
+  el.querySelectorAll("[data-pref]").forEach(cb => cb.addEventListener("change", () => {
+    saveNotifPref(cb.dataset.pref, cb.checked);
+    refreshNotifBadgesOnly();
+  }));
+}
+
 function buildNotifItems(category){
   const { pending, newIssues, resolvedRequests, direct } = _lastNotifications;
   const items = [];
@@ -2002,7 +2035,8 @@ function buildNotifItems(category){
       actionLabel: "View entry", onClick: () => openDetail(i.id) }));
   }
   items.sort((a, b) => new Date(b.time) - new Date(a.time));
-  return items;
+  const prefs = loadNotifPrefs();
+  return items.filter(i => prefs[i.cat] !== false);
 }
 let _notifReadFilter = "all";
 function renderNotifPageGrouped(category){
