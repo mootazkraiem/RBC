@@ -563,19 +563,9 @@ async function refreshNotifications(){
     resolvedRequests: data.myResolvedRequests || [],
     direct: data.direct || [],
   };
-  if(_notifsInitialized){
-    toastNewItems(_lastNotifications.pending, "pending", r => r.id,
-      () => "Password request", r => `${r.username} requested a password change`,
-      () => { document.getElementById("notifPopover").classList.remove("open"); openManageUsers(); });
-    toastNewItems(_lastNotifications.newIssues, "issue", i => i.id,
-      () => "New in the knowledge base", i => `${i.created_by} added "${i.title}"`,
-      i => { document.getElementById("notifPopover").classList.remove("open"); openDetail(i.id); });
-    toastNewItems(_lastNotifications.resolvedRequests, "resolved", r => r.id,
-      () => "Your account", r => `Your password change was ${r.status}`);
-    toastNewItems(_lastNotifications.direct, "direct", n => n.id,
-      () => "Update", n => n.message,
-      n => { if(n.issue_id){ document.getElementById("notifPopover").classList.remove("open"); openDetail(n.issue_id); } });
-  }
+  const seenNow = buildNotifItems("all");
+  const fresh = seenNow.filter(i => { const k = notifKey(i); if(_toastedKeys.has(k)) return false; _toastedKeys.add(k); return true; });
+  if(_notifsInitialized) handleFreshNotifications(fresh.filter(i => !isNotifRead(i)));
   _notifsInitialized = true;
   refreshNotifBadgesOnly();
 }
@@ -2092,34 +2082,193 @@ function renderNotifPrefs(){
   }));
 }
 
+function initialsOf(name){
+  const parts = String(name || "?").trim().split(/[\s._-]+/).filter(Boolean);
+  return (parts.slice(0, 2).map(p => p[0]).join("") || "?").toUpperCase();
+}
+// Direct notifications are free text from the server; classify them once here
+// so the list, the popover and the toast all agree on type, title and icon.
+function classifyDirect(n){
+  const msg = String(n.message || "");
+  let m = msg.match(/^(.+?) requested changes on "(.*?)": ([\s\S]*)$/);
+  if(m) return { type: "changes", actor: m[1], entry: m[2], title: "Changes requested", icon: "fileText", color: "amber",
+    toastBody: `${escapeHtml(m[1])} asked for changes to <q>${escapeHtml(m[2])}</q>.`, act: "See feedback" };
+  m = msg.match(/^(.+?) changed the status of "(.*?)" to (.+)$/);
+  if(m){
+    const st = m[3].trim().toLowerCase();
+    if(st === "solved") return { type: "approved", actor: m[1], entry: m[2], title: "Entry approved", icon: "fileText", color: "green",
+      toastBody: `Your entry <q>${escapeHtml(m[2])}</q> is now approved.`, act: "View entry" };
+    if(st === "critical") return { type: "urgent", actor: m[1], entry: m[2], title: "Entry marked critical", icon: "fileText", color: "red", sticky: true,
+      toastBody: `<q>${escapeHtml(m[2])}</q> was marked Critical by ${escapeHtml(m[1])}.`, act: "Open entry" };
+    if(st === "cancelled") return { type: "changes", actor: m[1], entry: m[2], title: "Entry not accepted", icon: "fileText", color: "amber",
+      toastBody: `<q>${escapeHtml(m[2])}</q> was closed without publishing.`, act: "See feedback" };
+    return { type: "default", actor: m[1], entry: m[2], title: "Status updated", icon: "fileText", color: "blue",
+      toastBody: `<q>${escapeHtml(m[2])}</q> is now ${escapeHtml(m[3])}.`, act: "View entry" };
+  }
+  return { type: "default", actor: "", entry: "", title: "Update", icon: "bell", color: "blue", toastBody: escapeHtml(msg), act: "View details" };
+}
 function buildNotifItems(category){
   const { pending, newIssues, resolvedRequests, direct } = _lastNotifications;
   const items = [];
-  if(category === "all" || category === "reviews"){
-    pending.forEach(r => items.push({ icon: "clipboardCheck", colorClass: "indigo", time: r.requested_at, cat: "reviews",
-      title: "Password change requested",
-      body: `${escapeHtml(r.username)} requested a password change.`,
-      actionLabel: "Review", onClick: () => openManageUsers() }));
-  }
-  if(category === "all" || category === "mine"){
-    direct.forEach(n => items.push({ icon: "fileText", colorClass: "green", time: n.created_at, cat: "mine", ref: n.issue_id || "",
-      title: n.issue_id ? "Changes requested" : "Update",
-      body: escapeHtml(n.message),
-      actionLabel: n.issue_id ? "Address feedback" : null, onClick: n.issue_id ? () => openDetail(n.issue_id, true) : null }));
-    resolvedRequests.forEach(r => items.push({ icon: "check", colorClass: r.status === "approved" ? "green" : "red", time: r.reviewed_at, cat: "mine",
-      title: r.status === "approved" ? "Password change approved" : "Password change rejected",
-      body: `Your password change was ${escapeHtml(r.status)}.` }));
-  }
-  if(category === "all" || category === "kb"){
-    newIssues.forEach(i => items.push({ icon: "shieldCheck", colorClass: "teal", time: i.created_at, cat: "kb", ref: i.id,
-      title: "New knowledge entry",
-      body: `${escapeHtml(i.created_by)} added "${escapeHtml(i.title)}".`,
-      actionLabel: "View entry", onClick: () => openDetail(i.id) }));
-  }
+  pending.forEach(r => items.push({ icon: "clipboardCheck", colorClass: "indigo", time: r.requested_at, cat: "reviews",
+    title: "Password change requested",
+    body: `${escapeHtml(r.username)} requested a password change.`,
+    actionLabel: "Review", onClick: () => openManageUsers(),
+    toast: { type: "review", tag: "Review", actor: r.username, title: "Password change requested",
+      body: `<q>${escapeHtml(r.username)}</q> asked for a password change.`, act: "Review now" } }));
+  direct.forEach(n => {
+    const c = classifyDirect(n);
+    items.push({ icon: c.icon, colorClass: c.color, time: n.created_at, cat: "mine", ref: n.issue_id || "",
+      title: c.title, body: escapeHtml(n.message),
+      actionLabel: n.issue_id ? c.act : null, onClick: n.issue_id ? () => openDetail(n.issue_id, c.type === "changes") : null,
+      toast: { type: c.type, tag: c.type === "urgent" ? "Critical" : ({ changes: "Changes", approved: "Approved" }[c.type] || "Update"),
+        actor: c.actor, title: c.title, body: c.toastBody, act: c.act, sticky: !!c.sticky } });
+  });
+  resolvedRequests.forEach(r => {
+    const ok = r.status === "approved";
+    items.push({ icon: "check", colorClass: ok ? "green" : "red", time: r.reviewed_at, cat: "mine",
+      title: ok ? "Password change approved" : "Password change rejected",
+      body: `Your password change was ${escapeHtml(r.status)}.`,
+      toast: { type: ok ? "approved" : "changes", tag: ok ? "Approved" : "Changes", actor: "Admin",
+        title: ok ? "Password change approved" : "Password change rejected",
+        body: `Your password change request was <q>${escapeHtml(r.status)}</q>.`, act: "View details" } });
+  });
+  newIssues.forEach(i => {
+    const reviewer = isAdminOrAbove();
+    items.push({ icon: reviewer ? "clipboardCheck" : "shieldCheck", colorClass: reviewer ? "indigo" : "teal", time: i.created_at,
+      cat: reviewer ? "reviews" : "kb", ref: i.id,
+      title: reviewer ? "New review assigned" : "New knowledge entry",
+      body: reviewer ? `${escapeHtml(i.created_by)} submitted "${escapeHtml(i.title)}" for your review.` : `${escapeHtml(i.created_by)} added "${escapeHtml(i.title)}".`,
+      actionLabel: reviewer ? "Review entry" : "View entry", onClick: () => openDetail(i.id),
+      toast: reviewer
+        ? { type: "review", tag: "Review", actor: i.created_by, title: "New review assigned",
+            body: `${escapeHtml(i.created_by)} submitted <q>${escapeHtml(i.title)}</q> for your review.`, act: "Review now" }
+        : { type: "default", tag: "Knowledge base", actor: i.created_by, title: "New knowledge entry",
+            body: `${escapeHtml(i.created_by)} added <q>${escapeHtml(i.title)}</q>.`, act: "View entry" } });
+  });
   items.sort((a, b) => new Date(b.time) - new Date(a.time));
   const prefs = loadNotifPrefs();
   const deleted = _loadDeletedSet();
-  return items.filter(i => prefs[i.cat] !== false && !deleted.has(notifKey(i)));
+  return items.filter(i => prefs[i.cat] !== false && !deleted.has(notifKey(i))
+    && (category === "all" || i.cat === category));
+}
+
+/* ---- Real-time toast (reference "Notification pop-out"): four trigger types ---- */
+const TOAST_ICONS = {
+  review: '<path d="M3 6h13M3 12h9M3 18h7"/><circle cx="17" cy="16" r="3"/><path d="m21 20-1.8-1.8"/>',
+  approved: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="m9 15 2 2 4-4"/>',
+  changes: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h8M8 13h5"/>',
+  urgent: '<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/>',
+  default: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
+};
+const TOAST_CLASS = { review: "v", approved: "g", changes: "a", urgent: "r", default: "" };
+const TOAST_ACTOR_COLOR = { review: "#7c5ce0", approved: "#0e9f6e", changes: "#d97706", urgent: "#c2261b", default: "#1d4ed8" };
+const TOAST_MS = 6000;
+let _toastQueue = [];
+let _newNotifKeys = new Set();
+const isMobileToast = () => window.matchMedia && window.matchMedia("(max-width: 767px)").matches;
+const toastMax = () => isMobileToast() ? 1 : 3;
+const visibleToasts = () => Array.from(document.querySelectorAll("#notifToasts .ntoast:not(.out)"));
+
+function resetNotifToastState(){
+  _notifsInitialized = false; _toastedKeys.clear(); _toastQueue = []; _newNotifKeys.clear();
+  const box = document.getElementById("notifToasts"); if(box) box.innerHTML = "";
+}
+function ringBell(){
+  const els = [document.getElementById("notifBtn"), document.getElementById("notifBadge"), document.getElementById("sideBadgeNotif")];
+  els.forEach(e => { if(e){ e.classList.remove("bell-ring", "badge-pop"); void e.offsetWidth; } });
+  if(els[0]) els[0].classList.add("bell-ring");
+  if(els[1]) els[1].classList.add("badge-pop");
+  if(els[2]) els[2].classList.add("badge-pop");
+}
+function renderToastMore(){
+  const box = document.getElementById("notifToasts");
+  let more = box.querySelector(".ntoast-more");
+  if(!_toastQueue.length){ if(more) more.remove(); return; }
+  if(!more){
+    more = document.createElement("button");
+    more.type = "button"; more.className = "ntoast-more";
+    more.addEventListener("click", () => {
+      _toastQueue = []; renderToastMore();
+      document.getElementById("notifBtn").click();
+    });
+    box.appendChild(more);
+  }
+  more.innerHTML = `<span class="c">+${_toastQueue.length}</span> more new notification${_toastQueue.length > 1 ? "s" : ""}`;
+}
+function showNotifToast(item){
+  if(visibleToasts().length >= toastMax()){
+    if(isMobileToast()){ visibleToasts().forEach(closeNotifToast); }   // mobile: one at a time, newest replaces
+    else { _toastQueue.push(item); renderToastMore(); return; }
+  }
+  makeNotifToast(item);
+}
+function makeNotifToast(item){
+  const d = item.toast || { type: "default", tag: "Update", title: item.title, body: item.body, act: "View details", actor: "" };
+  const box = document.getElementById("notifToasts");
+  const el = document.createElement("div");
+  el.className = "ntoast " + (TOAST_CLASS[d.type] || "");
+  el.setAttribute("role", d.sticky ? "alert" : "status");
+  el.tabIndex = 0;
+  el.innerHTML = `
+    <div class="nt-ic"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${TOAST_ICONS[d.type] || TOAST_ICONS.default}</svg>${d.actor ? `<span class="who" style="background:${TOAST_ACTOR_COLOR[d.type] || TOAST_ACTOR_COLOR.default}">${escapeHtml(initialsOf(d.actor))}</span>` : ""}</div>
+    <div>
+      <div class="nt-meta">${d.sticky ? '<span class="nt-urgent">Urgent</span>' : ""}<span class="nt-tag">${escapeHtml(d.tag || "Update")}</span><span class="nt-sep"></span><span>now</span></div>
+      <div class="nt-title">${escapeHtml(d.title)}</div>
+      <div class="nt-body">${d.body}</div>
+      <div class="nt-act"><button type="button" class="p">${escapeHtml(d.act || "View details")}</button><button type="button" class="s">Dismiss</button></div>
+    </div>
+    <button type="button" class="nt-x" aria-label="Dismiss notification"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    ${d.sticky ? "" : `<div class="nt-bar"><i style="animation-duration:${TOAST_MS}ms"></i></div>`}`;
+  box.prepend(el);
+  el.querySelector(".nt-x").addEventListener("click", e => { e.stopPropagation(); closeNotifToast(el); });
+  el.querySelector(".s").addEventListener("click", e => { e.stopPropagation(); closeNotifToast(el); });
+  el.querySelector(".p").addEventListener("click", e => {
+    e.stopPropagation(); closeNotifToast(el);
+    setNotifRead([item], true); refreshNotifBadgesOnly();
+    if(item.onClick) item.onClick(); else openNotificationDetail(item);
+  });
+  el.addEventListener("click", () => { closeNotifToast(el); openNotificationDetail(item); });
+  const bar = el.querySelector(".nt-bar i");
+  if(bar) bar.addEventListener("animationend", () => closeNotifToast(el));
+  // swipe (up or sideways) to dismiss
+  let sx = 0, sy = 0, dragging = false;
+  el.addEventListener("pointerdown", e => { sx = e.clientX; sy = e.clientY; dragging = true; });
+  el.addEventListener("pointermove", e => {
+    if(!dragging) return;
+    const dx = e.clientX - sx, dy = e.clientY - sy;
+    if(isMobileToast()) el.style.transform = `translate(${dx}px, ${Math.min(0, dy)}px)`;
+  });
+  const end = e => {
+    if(!dragging) return; dragging = false;
+    const dx = e.clientX - sx, dy = e.clientY - sy;
+    if(isMobileToast() && (Math.abs(dx) > 60 || dy < -40)) closeNotifToast(el);
+    else el.style.transform = "";
+  };
+  el.addEventListener("pointerup", end);
+  el.addEventListener("pointercancel", end);
+}
+function closeNotifToast(el){
+  if(!el || el.classList.contains("out")) return;
+  el.classList.add("out");
+  setTimeout(() => {
+    el.remove();
+    if(_toastQueue.length && visibleToasts().length < toastMax()){ makeNotifToast(_toastQueue.shift()); renderToastMore(); }
+    else renderToastMore();
+  }, 240);
+}
+// Called with brand-new, unread notifications only (never the backlog at login).
+function handleFreshNotifications(fresh){
+  if(!fresh.length) return;
+  ringBell();
+  fresh.forEach(i => _newNotifKeys.add(notifKey(i)));
+  const pop = document.getElementById("notifPopover");
+  const popOpen = pop && pop.classList.contains("open");
+  const onList = (document.querySelector(".view.active") || {}).id === "view-notifications";
+  if(popOpen) renderNotificationPopover();          // the item slides into the list instead of a toast
+  if(onList) renderNotifPageGrouped(_notifPageTab); // list updates in place with a "New" marker
+  if(popOpen || onList) return;
+  fresh.slice().reverse().forEach(showNotifToast);  // oldest first, so the newest ends up on top
 }
 
 /* ---- Notification detail (reference "Notification Detail" page) ---- */
@@ -2131,6 +2280,7 @@ const NOTIF_WHY = {
 };
 async function openNotificationDetail(item){
   _notifDetailItem = item;
+  _newNotifKeys.delete(notifKey(item));
   setNotifRead([item], true);
   refreshNotifBadgesOnly();
   await showView("notification-detail");
@@ -2226,19 +2376,19 @@ async function renderNotificationDetail(){
 let _notifReadFilter = "all";
 function renderNotifPageGrouped(category){
   const list = document.getElementById("notifPageList");
-  const { pending, newIssues, resolvedRequests, direct } = _lastNotifications;
   const all = buildNotifItems(category);
   const unreadN = all.filter(i => !isNotifRead(i)).length;
   const items = all.filter(i => _notifReadFilter === "all" ? true : _notifReadFilter === "unread" ? !isNotifRead(i) : isNotifRead(i));
 
-  document.getElementById("tabCountNotifAll").textContent = pending.length + newIssues.length + resolvedRequests.length + direct.length;
-  document.getElementById("tabCountNotifReviews").textContent = pending.length;
-  document.getElementById("tabCountNotifMine").textContent = direct.length + resolvedRequests.length;
-  document.getElementById("tabCountNotifKb").textContent = newIssues.length;
+  document.getElementById("tabCountNotifAll").textContent = buildNotifItems("all").length;
+  document.getElementById("tabCountNotifReviews").textContent = buildNotifItems("reviews").length;
+  document.getElementById("tabCountNotifMine").textContent = buildNotifItems("mine").length;
+  document.getElementById("tabCountNotifKb").textContent = buildNotifItems("kb").length;
   const unreadLbl = document.getElementById("notifSegUnreadCount");
   if(unreadLbl) unreadLbl.textContent = unreadN;
   const countLbl = document.getElementById("notifTotalLabel");
-  if(countLbl) countLbl.textContent = `${items.length} notification${items.length === 1 ? "" : "s"}`;
+  const newN = items.filter(i => !isNotifRead(i) && _newNotifKeys.has(notifKey(i))).length;
+  if(countLbl) countLbl.textContent = `${items.length} notification${items.length === 1 ? "" : "s"}${newN ? ` \u00b7 ${newN} new` : ""}`;
   document.querySelectorAll("[data-notif-seg]").forEach(el => el.classList.toggle("active", el.dataset.notifSeg === _notifReadFilter));
 
   if(!items.length){
@@ -2260,6 +2410,7 @@ function renderNotifPageGrouped(category){
           <div class="notif-page-title-row">
             <b class="notif-page-title">${escapeHtml(item.title)}</b>
             <span class="notif-pill ${catMeta.pillClass}">${catMeta.label}</span>
+            ${(!read && _newNotifKeys.has(notifKey(item))) ? '<span class="notif-new">New</span>' : ""}
           </div>
           <div class="notif-page-text">${item.body}</div>
           <div class="notif-page-meta"><span class="icon icon-sm">${iconSvg("clock")}</span>${notifMeta(item.time)}${item.ref ? ` <span class="notif-sep">\u00b7</span> ${escapeHtml(item.ref)}` : ""}</div>
@@ -2436,6 +2587,7 @@ function wireEvents(){
     if(!ok) return;
     if(_notifPollId){ clearInterval(_notifPollId); _notifPollId = null; }
     await api().logout();
+    resetNotifToastState();
     showLoginScreen();
   });
 
@@ -2541,6 +2693,7 @@ async function completeInit(){
   document.getElementById("accountMenuUsername").textContent = "@" + (currentUsername || "—");
   document.getElementById("accountMenuRole").textContent = currentRoleLabel;
 
+  resetNotifToastState();
   await refreshNotifications();
   if(_notifPollId) clearInterval(_notifPollId);
   _notifPollId = setInterval(refreshNotifications, 30000); // live-feeling badge, Teams/FB-style
