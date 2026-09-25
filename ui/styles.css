@@ -1176,3 +1176,14 @@ body{background:var(--bg);background-attachment:scroll;}
   .icon-btn.bell-ring svg,.badge-pop{animation:none;}
   @keyframes ntfade{from{opacity:0;}}
 }
+
+/* ---------- login: server address recovery ---------- */
+.rl-recover{margin-top:14px;width:100%;text-align:left;}
+.rl-recover-row{display:flex;gap:8px;}
+.rl-recover-row .rl-input{flex:1;min-width:0;}
+.rl-recover-btn{flex-shrink:0;height:42px;padding:0 18px;border-radius:10px;border:1px solid #c7d4fb;background:#eef3ff;color:#1a40b0;font:700 13.5px var(--font);cursor:pointer;}
+.rl-recover-btn:hover{background:#dbe6fe;}
+.rl-recover-btn:disabled{opacity:.6;cursor:default;}
+.rl-recover-msg{font-size:12.5px;color:#5b667a;margin-top:6px;min-height:16px;}
+.rl-recover-bad{color:#b91c1c;}
+.rl-recover-ok{color:#0b7a55;font-weight:600;}

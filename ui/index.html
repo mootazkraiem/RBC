@@ -91,6 +91,14 @@
         </div>
 
         <div class="rl-error" id="loginError" style="display:none;"></div>
+        <div class="rl-recover" id="loginRecover" style="display:none;">
+          <label class="rl-field-label" for="loginServerInput">Server address</label>
+          <div class="rl-recover-row">
+            <input class="rl-input" id="loginServerInput" type="text" placeholder="https://your-server-address" autocomplete="off" spellcheck="false">
+            <button type="button" class="rl-recover-btn" id="loginServerSave">Connect</button>
+          </div>
+          <div class="rl-recover-msg" id="loginServerMsg" role="status"></div>
+        </div>
 
         <button class="rl-btn" type="submit" id="loginSubmitBtn">Sign in
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>

@@ -2573,6 +2573,8 @@ function wireEvents(){
   });
   document.addEventListener("click", () => notifPop.classList.remove("open"));
 
+  document.getElementById("loginServerSave").addEventListener("click", saveServerAddress);
+  document.getElementById("loginServerInput").addEventListener("keydown", e => { if(e.key === "Enter"){ e.preventDefault(); saveServerAddress(); } });
   document.getElementById("cpRequestBtn").addEventListener("click", submitPasswordChangeRequest);
 
   document.getElementById("confirmCancelBtn").addEventListener("click", () => _closeConfirmDialog(false));
@@ -2660,12 +2662,42 @@ async function attemptLogin(){
   btn.disabled = false;
   btn.textContent = originalLabel;
   if(result && result.apiError){
-    errEl.textContent = result.apiError;
+    if(/^Could not reach the server/.test(result.apiError)){
+      errEl.textContent = "Can't reach the server. It may have moved to a new address. Enter the current address below.";
+      errEl.title = result.apiError;
+      await showConnectionRecovery();
+    } else {
+      errEl.textContent = result.apiError;
+      errEl.title = "";
+    }
     errEl.style.display = "";
     return;
   }
   hideLoginScreen();
   await completeInit();
+}
+
+async function showConnectionRecovery(){
+  const box = document.getElementById("loginRecover");
+  const input = document.getElementById("loginServerInput");
+  if(!input.value){ try { input.value = (await api().get_server_url()) || ""; } catch(e){} }
+  document.getElementById("loginServerMsg").textContent = "";
+  box.style.display = "";
+}
+async function saveServerAddress(){
+  const msg = document.getElementById("loginServerMsg");
+  const btn = document.getElementById("loginServerSave");
+  msg.className = "rl-recover-msg";
+  msg.textContent = "Checking the address\u2026";
+  btn.disabled = true;
+  const result = await api().set_server_url(document.getElementById("loginServerInput").value);
+  btn.disabled = false;
+  if(result && result.apiError){ msg.className = "rl-recover-msg rl-recover-bad"; msg.textContent = result.apiError; return; }
+  msg.className = "rl-recover-msg rl-recover-ok";
+  msg.textContent = "Connected. You can sign in now.";
+  document.getElementById("loginError").style.display = "none";
+  const shown = document.getElementById("loginServerUrl"); if(shown) shown.textContent = result.serverUrl;
+  setTimeout(() => { document.getElementById("loginRecover").style.display = "none"; document.getElementById("loginPassword").focus(); }, 900);
 }
 
 /* ============================== startup ============================== */

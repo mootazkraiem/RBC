@@ -14,15 +14,17 @@ compromised; only this reviewed Python code ever talks to the server, and
 the session token never touches the DOM/JS context.
 """
 
+import json
 import os
 import subprocess
 import sys
 import tempfile
 
+import re
 import requests
 import webview
 
-from client_config import load_config, verify_option
+from client_config import CONFIG_PATH, load_config, verify_option
 
 # Trust whatever the OS already trusts (Windows' SChannel store, etc.)
 # instead of only the public CAs bundled in certifi. This matters
@@ -105,6 +107,37 @@ class Api:
         return resp, None
 
     # --------------------------------------------------------------- auth
+    def get_server_url(self):
+        return self.base_url
+
+    def set_server_url(self, url):
+        """Point this install at a new server address (Quick Tunnel hostnames
+        change every time the tunnel restarts). The address is only saved if
+        it actually answers /health, so a typo can't lock anyone out."""
+        url = (url or "").strip().rstrip("/")
+        if not re.match(r"^https?://[^\s/]+", url):
+            return {"apiError": "Enter the full address, starting with https://"}
+        try:
+            resp = requests.get(f"{url}/health", verify=self.verify, timeout=10)
+            healthy = resp.status_code == 200 and resp.json().get("ok") is True
+        except (requests.exceptions.RequestException, ValueError) as exc:
+            return {"apiError": f"Could not reach {url}: {exc}"}
+        if not healthy:
+            return {"apiError": f"{url} answered, but it does not look like an RCK server."}
+        try:
+            try:
+                data = json.loads(CONFIG_PATH.read_text(encoding="utf-8")) if CONFIG_PATH.is_file() else {}
+            except (OSError, ValueError):
+                data = {}
+            data["server_url"] = url
+            CONFIG_PATH.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+        except OSError as exc:
+            return {"apiError": f"Reached the server, but could not save the new address: {exc}"}
+        self.base_url = url
+        self.config["server_url"] = url
+        self._token = None
+        return {"ok": True, "serverUrl": url}
+
     def login(self, username, password):
         try:
             resp = self._session.post(
