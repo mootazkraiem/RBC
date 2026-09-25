@@ -10,6 +10,8 @@ const ICONS = {
   search: SVG_OPEN + '<circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>',
   chevronDown: SVG_OPEN + '<path d="M6 9l6 6 6-6"/></svg>',
   info: SVG_OPEN + '<circle cx="12" cy="12" r="9"/><line x1="12" y1="11" x2="12" y2="16"/><circle cx="12" cy="7.5" r="0.6" fill="currentColor" stroke="none"/></svg>',
+  dots: SVG_OPEN + '<circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/></svg>',
+  checkDouble: SVG_OPEN + '<path d="M2 12.5l4 4L14 8"/><path d="M10 16.5l1 1L20 8"/></svg>',
   bell: SVG_OPEN + '<path d="M6 10a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6"/><path d="M10 20a2 2 0 0 0 4 0"/></svg>',
   help: SVG_OPEN + '<circle cx="12" cy="12" r="9"/><path d="M9.5 9.2a2.5 2.5 0 1 1 3.5 2.3c-.9.4-1 1-1 2"/><circle cx="12" cy="16.7" r="0.6" fill="currentColor" stroke="none"/></svg>',
   send: SVG_OPEN + '<path d="M21 3 3 10.5l7 2.5 2 7L21 3Z"/><path d="M12.5 13.5 21 3"/></svg>',
@@ -513,6 +515,32 @@ function toastNewItems(items, keyPrefix, keyFn, titleFn, bodyFn, onClick){
   });
 }
 
+
+/* Read/unread state is local per user (localStorage), keyed by a stable item key. */
+function _readStoreKey(){ return "rck.notifRead." + (currentUsername || "anon"); }
+function _loadReadSet(){
+  try { return new Set(JSON.parse(localStorage.getItem(_readStoreKey()) || "[]")); } catch(e){ return new Set(); }
+}
+function _saveReadSet(set){
+  try { localStorage.setItem(_readStoreKey(), JSON.stringify(Array.from(set).slice(-500))); } catch(e){}
+}
+function notifKey(item){ return `${item.cat}|${item.title}|${item.time}|${item.body}`; }
+function isNotifRead(item){ return _loadReadSet().has(notifKey(item)); }
+function setNotifRead(items, read){
+  const set = _loadReadSet();
+  items.forEach(i => read ? set.add(notifKey(i)) : set.delete(notifKey(i)));
+  _saveReadSet(set);
+}
+function unreadNotifCount(){ return buildNotifItems("all").filter(i => !isNotifRead(i)).length; }
+function notifMeta(iso){
+  const d = new Date(iso);
+  if(isNaN(d)) return "";
+  const time = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
+  const bucket = dayBucketLabel(iso);
+  if(bucket === "Today" || bucket === "Yesterday") return `${time} · ${bucket}`;
+  return `${d.toLocaleDateString([], { weekday: "short", day: "numeric", month: "short" })}, ${time}`;
+}
+
 async function refreshNotifications(){
   const badge = document.getElementById("notifBadge");
   const data = await api().get_notifications();
@@ -540,57 +568,70 @@ async function refreshNotifications(){
       n => { if(n.issue_id){ document.getElementById("notifPopover").classList.remove("open"); openDetail(n.issue_id); } });
   }
   _notifsInitialized = true;
-  const total = _lastNotifications.pending.length + _lastNotifications.newIssues.length +
-    _lastNotifications.resolvedRequests.length + _lastNotifications.direct.length;
-  if(total === 0){
-    badge.style.display = "none";
-  } else {
-    badge.textContent = total > 9 ? "9+" : String(total);
-    badge.style.display = "";
-  }
-  const sideBadge = document.getElementById("sideBadgeNotif");
-  if(sideBadge){
-    sideBadge.hidden = total === 0;
-    sideBadge.textContent = total > 9 ? "9+" : String(total);
-  }
+  refreshNotifBadgesOnly();
 }
 
+function notifRowClick(item, closeFn){
+  setNotifRead([item], true);
+  if(closeFn) closeFn();
+  if(item.onClick) item.onClick();
+  refreshNotifBadgesOnly();
+}
+function refreshNotifBadgesOnly(){
+  const total = unreadNotifCount();
+  const badge = document.getElementById("notifBadge");
+  if(badge){ badge.style.display = total ? "" : "none"; badge.textContent = total > 9 ? "9+" : String(total); }
+  const sideBadge = document.getElementById("sideBadgeNotif");
+  if(sideBadge){ sideBadge.hidden = total === 0; sideBadge.textContent = total > 9 ? "9+" : String(total); }
+}
 function renderNotificationPopover(containerId, category){
-  const bare = containerId === "dashNotifList"; // dashboard widget already has its own heading + "View all" link
+  const bare = containerId === "dashNotifList";
   const pop = document.getElementById(containerId || "notifPopover");
   const cat = category || "all";
-  const items = buildNotifItems(cat).slice(0, 6);
+  const items = buildNotifItems(cat).slice(0, 5);
+  const unread = items.filter(i => !isNotifRead(i)).length;
 
   if(!items.length){
     pop.innerHTML = `
       ${bare ? "" : `<div class="popover-header"><h4>Notifications</h4></div>`}
       <div class="notif-empty">
         <span class="notif-empty-icon">${iconSvg("bell")}</span>
-        <div class="muted-small">You're all caught up.</div>
-      </div>`;
-    return;
-  }
-  pop.innerHTML = `
-    ${bare ? "" : `<div class="popover-header"><h4>Notifications</h4><span class="notif-total">${items.length}</span></div>`}
-    <div class="notif-pop-list">
-      ${items.map((item, idx) => `
-        <button type="button" class="notif-pop-item" data-notif-idx="${idx}">
+        <div class="notif-empty-title">You're all caught up</div>
+        <div class="muted-small">New reviews and updates on your entries will appear here.</div>
+      </div>
+      ${bare ? "" : `<div class="notif-pop-foot"><button type="button" class="notif-pop-viewall" data-view="notifications"><span>View all notifications <span class="icon icon-sm" data-nav-icon="arrowRight"></span></span></button></div>`}`;
+  } else {
+    pop.innerHTML = `
+      ${bare ? "" : `<div class="popover-header">
+        <div class="popover-title"><h4>Notifications</h4>${unread ? `<span class="notif-unread-pill">${unread} unread</span>` : ""}</div>
+        <button type="button" class="notif-markall" data-pop-markall><span class="icon icon-sm">${iconSvg("checkDouble")}</span> Mark all as read</button>
+      </div>`}
+      <div class="notif-pop-list">
+        ${items.map((item, idx) => {
+          const read = isNotifRead(item);
+          return `
+        <button type="button" class="notif-pop-item${read ? "" : " unread"}" data-notif-idx="${idx}">
           <span class="notif-icon notif-icon-${item.colorClass}">${iconSvg(item.icon)}</span>
           <span class="notif-pop-body">
             <span class="notif-pop-title">${escapeHtml(item.title)}</span>
             <span class="notif-pop-text">${item.body}</span>
-            <span class="notif-time">${formatDate(item.time)}</span>
+            <span class="notif-time">${notifMeta(item.time)}</span>
           </span>
-        </button>
-      `).join("")}
-    </div>
-    ${bare ? "" : `<button type="button" class="notif-pop-viewall" data-view="notifications">View all notifications <span class="icon icon-sm" data-nav-icon="arrowRight"></span></button>`}`;
+          ${read ? "" : `<span class="notif-dot" aria-label="Unread"></span>`}
+        </button>`;
+        }).join("")}
+      </div>
+      ${bare ? "" : `<div class="notif-pop-foot"><button type="button" class="notif-pop-viewall" data-view="notifications"><span>View all notifications <span class="icon icon-sm" data-nav-icon="arrowRight"></span></span></button><span class="icon notif-pop-gear" title="Notification preferences">${iconSvg("settings")}</span></div>`}`;
+  }
+  const close = () => pop.classList.remove("open");
   pop.querySelectorAll("[data-notif-idx]").forEach(btn => {
     const item = items[Number(btn.getAttribute("data-notif-idx"))];
-    if(item.onClick) btn.addEventListener("click", () => { pop.classList.remove("open"); item.onClick(); });
+    btn.addEventListener("click", () => { notifRowClick(item, close); renderNotificationPopover(containerId, category); });
   });
   const viewAllBtn = pop.querySelector(".notif-pop-viewall");
-  if(viewAllBtn) viewAllBtn.addEventListener("click", () => { pop.classList.remove("open"); showView("notifications"); });
+  if(viewAllBtn) viewAllBtn.addEventListener("click", () => { close(); showView("notifications"); });
+  const markAll = pop.querySelector("[data-pop-markall]");
+  if(markAll) markAll.addEventListener("click", e => { e.stopPropagation(); setNotifRead(buildNotifItems("all"), true); refreshNotifBadgesOnly(); renderNotificationPopover(containerId, category); });
   pop.querySelectorAll("[data-nav-icon]").forEach(el => { el.innerHTML = iconSvg(el.dataset.navIcon); });
 }
 
@@ -1430,7 +1471,13 @@ function wireShellNav(){
   document.getElementById("notifMarkAllReadBtn").addEventListener("click", async () => {
     await api().mark_notifications_seen();
     await refreshNotifPage();
+    setNotifRead(buildNotifItems("all"), true);
+    renderNotifPageGrouped(_notifPageTab);
+    refreshNotifBadgesOnly();
   });
+  document.querySelectorAll("[data-notif-seg]").forEach(el => el.addEventListener("click", () => {
+    _notifReadFilter = el.dataset.notifSeg; renderNotifPageGrouped(_notifPageTab);
+  }));
   document.querySelectorAll('[data-settings-tab]').forEach(el => {
     el.addEventListener("click", () => setSettingsTab(el.dataset.settingsTab));
   });
@@ -1941,13 +1988,13 @@ function buildNotifItems(category){
   const { pending, newIssues, resolvedRequests, direct } = _lastNotifications;
   const items = [];
   if(category === "all" || category === "reviews"){
-    pending.forEach(r => items.push({ icon: "user", colorClass: "indigo", time: r.requested_at, cat: "reviews",
+    pending.forEach(r => items.push({ icon: "clipboardCheck", colorClass: "indigo", time: r.requested_at, cat: "reviews",
       title: "Password change requested",
       body: `${escapeHtml(r.username)} requested a password change.`,
       actionLabel: "Review", onClick: () => openManageUsers() }));
   }
   if(category === "all" || category === "mine"){
-    direct.forEach(n => items.push({ icon: "edit", colorClass: "amber", time: n.created_at, cat: "mine",
+    direct.forEach(n => items.push({ icon: "fileText", colorClass: "green", time: n.created_at, cat: "mine", ref: n.issue_id || "",
       title: n.issue_id ? "Changes requested" : "Update",
       body: escapeHtml(n.message),
       actionLabel: n.issue_id ? "Address feedback" : null, onClick: n.issue_id ? () => openDetail(n.issue_id, true) : null }));
@@ -1956,7 +2003,7 @@ function buildNotifItems(category){
       body: `Your password change was ${escapeHtml(r.status)}.` }));
   }
   if(category === "all" || category === "kb"){
-    newIssues.forEach(i => items.push({ icon: "plus", colorClass: "blue", time: i.created_at, cat: "kb",
+    newIssues.forEach(i => items.push({ icon: "shieldCheck", colorClass: "teal", time: i.created_at, cat: "kb", ref: i.id,
       title: "New knowledge entry",
       body: `${escapeHtml(i.created_by)} added "${escapeHtml(i.title)}".`,
       actionLabel: "View entry", onClick: () => openDetail(i.id) }));
@@ -1964,46 +2011,84 @@ function buildNotifItems(category){
   items.sort((a, b) => new Date(b.time) - new Date(a.time));
   return items;
 }
+let _notifReadFilter = "all";
 function renderNotifPageGrouped(category){
   const list = document.getElementById("notifPageList");
   const { pending, newIssues, resolvedRequests, direct } = _lastNotifications;
-  const items = buildNotifItems(category);
+  const all = buildNotifItems(category);
+  const unreadN = all.filter(i => !isNotifRead(i)).length;
+  const items = all.filter(i => _notifReadFilter === "all" ? true : _notifReadFilter === "unread" ? !isNotifRead(i) : isNotifRead(i));
 
   document.getElementById("tabCountNotifAll").textContent = pending.length + newIssues.length + resolvedRequests.length + direct.length;
   document.getElementById("tabCountNotifReviews").textContent = pending.length;
   document.getElementById("tabCountNotifMine").textContent = direct.length + resolvedRequests.length;
   document.getElementById("tabCountNotifKb").textContent = newIssues.length;
+  const unreadLbl = document.getElementById("notifSegUnreadCount");
+  if(unreadLbl) unreadLbl.textContent = unreadN;
+  const countLbl = document.getElementById("notifTotalLabel");
+  if(countLbl) countLbl.textContent = `${items.length} notification${items.length === 1 ? "" : "s"}`;
+  document.querySelectorAll("[data-notif-seg]").forEach(el => el.classList.toggle("active", el.dataset.notifSeg === _notifReadFilter));
 
   if(!items.length){
-    list.innerHTML = `<div class="table-empty"><span class="icon icon-muted" style="width:32px;height:32px;">${iconSvg("bell")}</span><b>You're all caught up</b><span>Nothing new right now.</span></div>`;
+    list.innerHTML = `<div class="table-empty"><span class="icon icon-muted" style="width:32px;height:32px;">${iconSvg("bell")}</span><b>${_notifReadFilter === "unread" ? "No unread notifications" : "You're all caught up"}</b><span>New reviews and updates on your entries will appear here.</span></div>`;
     return;
   }
   let html = "";
   let lastBucket = null;
-  items.forEach(item => {
+  items.forEach((item, idx) => {
     const bucket = dayBucketLabel(item.time);
     if(bucket !== lastBucket){ html += `<div class="notif-day-label">${bucket}</div>`; lastBucket = bucket; }
     const catMeta = NOTIF_CATEGORY_META[item.cat];
+    const read = isNotifRead(item);
     html += `
-      <div class="notif-page-row">
-        <span class="notif-icon notif-icon-${item.colorClass}">${iconSvg(item.icon)}</span>
+      <div class="notif-page-row${read ? "" : " unread"}" data-row="${idx}">
+        <span class="notif-dot-col">${read ? "" : `<span class="notif-dot" aria-label="Unread"></span>`}</span>
+        <span class="notif-icon notif-icon-tile notif-icon-${item.colorClass}">${iconSvg(item.icon)}</span>
         <div class="notif-page-body">
           <div class="notif-page-title-row">
             <b class="notif-page-title">${escapeHtml(item.title)}</b>
             <span class="notif-pill ${catMeta.pillClass}">${catMeta.label}</span>
           </div>
           <div class="notif-page-text">${item.body}</div>
-          ${item.actionLabel ? `<button type="button" class="btn btn-outline btn-sm notif-page-action">${escapeHtml(item.actionLabel)}</button>` : ""}
+          <div class="notif-page-meta"><span class="icon icon-sm">${iconSvg("clock")}</span>${notifMeta(item.time)}${item.ref ? ` <span class="notif-sep">\u00b7</span> ${escapeHtml(item.ref)}` : ""}</div>
         </div>
-        <span class="notif-page-time">${formatDate(item.time)}</span>
+        <div class="notif-page-actions">
+          ${item.actionLabel ? `<button type="button" class="notif-page-action">${escapeHtml(item.actionLabel)} <span class="icon icon-sm">${iconSvg("arrowRight")}</span></button>` : ""}
+          <span class="notif-menu-wrap">
+            <button type="button" class="notif-more" aria-label="More actions" data-more="${idx}"><span class="icon icon-sm">${iconSvg("dots")}</span></button>
+            <div class="notif-menu" data-menu="${idx}" hidden>
+              <button type="button" data-toggle-read="${idx}">${read ? "Mark as unread" : "Mark as read"}</button>
+              ${item.onClick ? `<button type="button" data-open="${idx}">Open details</button>` : ""}
+            </div>
+          </span>
+        </div>
       </div>`;
   });
   list.innerHTML = html;
-  Array.from(list.querySelectorAll(".notif-page-row")).forEach((el, idx) => {
-    const btn = el.querySelector(".notif-page-action");
-    if(btn && items[idx].onClick) btn.addEventListener("click", items[idx].onClick);
+  const rerender = () => { renderNotifPageGrouped(_notifPageTab); refreshNotifBadgesOnly(); };
+  list.querySelectorAll(".notif-page-action").forEach(btn => {
+    const idx = Number(btn.closest(".notif-page-row").dataset.row);
+    btn.addEventListener("click", () => { setNotifRead([items[idx]], true); if(items[idx].onClick) items[idx].onClick(); rerender(); });
   });
+  list.querySelectorAll("[data-more]").forEach(btn => btn.addEventListener("click", e => {
+    e.stopPropagation();
+    const menu = list.querySelector(`[data-menu="${btn.dataset.more}"]`);
+    const wasHidden = menu.hidden;
+    list.querySelectorAll(".notif-menu").forEach(m => m.hidden = true);
+    menu.hidden = !wasHidden;
+  }));
+  list.querySelectorAll("[data-toggle-read]").forEach(btn => btn.addEventListener("click", e => {
+    e.stopPropagation();
+    const item = items[Number(btn.dataset.toggleRead)];
+    setNotifRead([item], !isNotifRead(item)); rerender();
+  }));
+  list.querySelectorAll("[data-open]").forEach(btn => btn.addEventListener("click", e => {
+    e.stopPropagation();
+    const item = items[Number(btn.dataset.open)];
+    setNotifRead([item], true); if(item.onClick) item.onClick(); rerender();
+  }));
 }
+document.addEventListener("click", () => document.querySelectorAll(".notif-menu").forEach(m => m.hidden = true));
 
 /* ============================== wiring ============================== */
 function wireEvents(){

@@ -860,7 +860,15 @@
     <button class="tab-item" data-notif-tab="kb">Knowledge base <span class="tab-count" id="tabCountNotifKb">0</span></button>
   </div>
 
-  <div class="card">
+  <div class="notif-toolbar">
+    <div class="notif-seg">
+      <button type="button" class="notif-seg-btn active" data-notif-seg="all">All</button>
+      <button type="button" class="notif-seg-btn" data-notif-seg="unread">Unread · <span id="notifSegUnreadCount">0</span></button>
+      <button type="button" class="notif-seg-btn" data-notif-seg="read">Read</button>
+    </div>
+    <span class="notif-total-label" id="notifTotalLabel">0 notifications</span>
+  </div>
+  <div class="card notif-page-card">
     <div id="notifPageList" class="notif-list"></div>
   </div>
 </section>
