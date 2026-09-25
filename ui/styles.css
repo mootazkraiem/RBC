@@ -876,3 +876,7 @@ body[data-density="compact"] .card{padding:18px;}
 .search-row > .searchbar-lg{min-width:0;}
 
 .notif-page-action{align-self:flex-start;margin-top:4px;}
+
+.row-title-line{display:flex;align-items:center;gap:10px;min-width:0;}
+.row-title-line .row-title{min-width:0;}
+.row-title-line .notif-pill{flex-shrink:0;}

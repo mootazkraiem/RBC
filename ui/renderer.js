@@ -396,8 +396,8 @@ function renderIssueCards(container, items, emptyText, variant){
     <div class="issue-row" data-id="${escapeAttr(i.id)}">
       ${typeGlyphHtml(i.type, "row-icon")}
       <div class="row-body">
-        <div class="row-title">${escapeHtml(i.title)}</div>
-        <div class="row-sub">${escapeHtml(i.createdBy || "—")} · ${tMeta.label}</div>
+        <div class="row-title-line"><span class="row-title">${escapeHtml(i.title)}</span><span class="notif-pill ${tMeta.label === "Information" ? "notif-pill-indigo" : tMeta.label === "Procedure" ? "notif-pill-green" : "notif-pill-blue"}">${tMeta.label}</span></div>
+        <div class="row-sub">${escapeHtml(i.createdBy || "—")} · ${i.createdAt ? formatDate(i.createdAt) : "—"}</div>
       </div>
       <div class="row-right">${right}</div>
     </div>`;
