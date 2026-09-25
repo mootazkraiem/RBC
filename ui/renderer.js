@@ -26,6 +26,7 @@ const ICONS = {
   camera: SVG_OPEN + '<path d="M4 8h3l2-2h6l2 2h3v11H4z"/><circle cx="12" cy="13.5" r="3.2"/></svg>',
   fileText: SVG_OPEN + '<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="16.5" x2="15" y2="16.5"/></svg>',
   fileWarn: SVG_OPEN + '<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/><line x1="12" y1="11" x2="12" y2="15"/><circle cx="12" cy="17.6" r="0.6" fill="currentColor" stroke="none"/></svg>',
+  arrowLeft: SVG_OPEN + '<line x1="19" y1="12" x2="5" y2="12"/><path d="M11 6l-6 6 6 6"/></svg>',
   folder: SVG_OPEN + '<path d="M4 6h6l2 2h8v11H4z"/></svg>',
   barChart: SVG_OPEN + '<line x1="6" y1="20" x2="6" y2="12"/><line x1="12" y1="20" x2="12" y2="6"/><line x1="18" y1="20" x2="18" y2="15"/></svg>',
   user: SVG_OPEN + '<circle cx="12" cy="8.5" r="3.5"/><path d="M5 20c1-4 4-6 7-6s6 2 7 6"/></svg>',
@@ -531,6 +532,14 @@ function setNotifRead(items, read){
   items.forEach(i => read ? set.add(notifKey(i)) : set.delete(notifKey(i)));
   _saveReadSet(set);
 }
+function _delStoreKey(){ return "rck.notifDeleted." + (currentUsername || "anon"); }
+function _loadDeletedSet(){
+  try { return new Set(JSON.parse(localStorage.getItem(_delStoreKey()) || "[]")); } catch(e){ return new Set(); }
+}
+function deleteNotif(item){
+  const set = _loadDeletedSet(); set.add(notifKey(item));
+  try { localStorage.setItem(_delStoreKey(), JSON.stringify(Array.from(set).slice(-500))); } catch(e){}
+}
 function unreadNotifCount(){ return buildNotifItems("all").filter(i => !isNotifRead(i)).length; }
 function notifMeta(iso){
   const d = new Date(iso);
@@ -626,7 +635,7 @@ function renderNotificationPopover(containerId, category){
   const close = () => pop.classList.remove("open");
   pop.querySelectorAll("[data-notif-idx]").forEach(btn => {
     const item = items[Number(btn.getAttribute("data-notif-idx"))];
-    btn.addEventListener("click", () => { notifRowClick(item, close); renderNotificationPopover(containerId, category); });
+    btn.addEventListener("click", () => { close(); openNotificationDetail(item); });
   });
   const viewAllBtn = pop.querySelector(".notif-pop-viewall");
   if(viewAllBtn) viewAllBtn.addEventListener("click", () => { close(); showView("notifications"); });
@@ -1405,7 +1414,7 @@ async function submitProcedure(){
 const VIEW_TITLES = {
   dashboard: "Dashboard", capture: "Capture knowledge", "my-entries": "My entries",
   trusted: "Trusted knowledge", "review-queue": "Review queue",
-  notifications: "Notifications", "ai-assistant": "AI Assistant",
+  notifications: "Notifications", "notification-detail": "Notification", "ai-assistant": "AI Assistant",
   "my-account": "My account", settings: "Settings",
 };
 // Breadcrumb = "Section  ›  Page", matching the shell's own section
@@ -1413,7 +1422,7 @@ const VIEW_TITLES = {
 // Administration) -- Dashboard is the one exception, shown bare as the
 // app's home page.
 const VIEW_SECTIONS = {
-  notifications: "Workspace", capture: "Knowledge", "my-entries": "Knowledge", trusted: "Knowledge",
+  notifications: "Workspace", "notification-detail": "Notifications", capture: "Knowledge", "my-entries": "Knowledge", trusted: "Knowledge",
   "review-queue": "Validation", "ai-assistant": "Assistant", "my-account": "Account", settings: "Administration",
 };
 function renderBreadcrumb(view){
@@ -1426,7 +1435,8 @@ function renderBreadcrumb(view){
 }
 async function showView(view){
   document.querySelectorAll(".view").forEach(el => el.classList.toggle("active", el.id === "view-" + view));
-  document.querySelectorAll(".side-link[data-view]").forEach(el => el.classList.toggle("active", el.dataset.view === view));
+  const navView = view === "notification-detail" ? "notifications" : view;
+  document.querySelectorAll(".side-link[data-view]").forEach(el => el.classList.toggle("active", el.dataset.view === navView));
   document.getElementById("accountMenu").classList.remove("open");
   renderBreadcrumb(view);
   if(view === "dashboard") await refreshDashboard();
@@ -1478,6 +1488,7 @@ function wireShellNav(){
   document.querySelectorAll('[data-notif-tab]').forEach(el => {
     el.addEventListener("click", () => setNotifPageTab(el.dataset.notifTab));
   });
+  document.getElementById("notifDetailBack").addEventListener("click", () => showView("notifications"));
   document.getElementById("notifMarkAllReadBtn").addEventListener("click", async () => {
     await api().mark_notifications_seen();
     await refreshNotifPage();
@@ -2044,8 +2055,111 @@ function buildNotifItems(category){
   }
   items.sort((a, b) => new Date(b.time) - new Date(a.time));
   const prefs = loadNotifPrefs();
-  return items.filter(i => prefs[i.cat] !== false);
+  const deleted = _loadDeletedSet();
+  return items.filter(i => prefs[i.cat] !== false && !deleted.has(notifKey(i)));
 }
+
+/* ---- Notification detail (reference "Notification Detail" page) ---- */
+let _notifDetailItem = null;
+const NOTIF_WHY = {
+  reviews: "You are an authorized reviewer, so requests that need a decision reach you.",
+  mine: "This is an update on something you captured or requested.",
+  kb: "New knowledge entries are shared with everyone in the knowledge base.",
+};
+async function openNotificationDetail(item){
+  _notifDetailItem = item;
+  setNotifRead([item], true);
+  refreshNotifBadgesOnly();
+  await showView("notification-detail");
+  await renderNotificationDetail();
+}
+async function renderNotificationDetail(){
+  const item = _notifDetailItem;
+  const root = document.getElementById("notifDetailBody");
+  if(!item){ showView("notifications"); return; }
+  const meta = NOTIF_CATEGORY_META[item.cat];
+  const read = isNotifRead(item);
+  const received = new Date(item.time);
+  const receivedText = isNaN(received) ? "" : received.toLocaleString([], { weekday: "short", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false });
+
+  let issue = null;
+  if(item.ref){
+    const all = await _loadAllIssues();
+    issue = all.find(i => i.id === item.ref) || null;
+  }
+  const solved = issue && issue.status === "solved";
+  const cancelled = issue && issue.status === "cancelled";
+  const decided = solved || cancelled;
+  const t = issue ? typeBadgeInfo(issue.type) : null;
+
+  const relatedCard = issue ? `
+    <div class="nd-section-label">Related entry</div>
+    <div class="nd-entry" data-nd-entry>
+      ${typeGlyphHtml(issue.type, "entry-tile")}
+      <div class="nd-entry-main">
+        <div class="entry-title-line"><b class="entry-title">${escapeHtml(issue.title)}</b><span class="mono muted-small">${escapeHtml(issue.id)}</span></div>
+        <div class="entry-meta"><span class="status ${statusClass(issue.status)}">${statusLabel(issue.status)}</span> <span class="notif-sep">\u00b7</span> ${escapeHtml(t.label)} <span class="notif-sep">\u00b7</span> ${escapeHtml(issue.createdBy || "\u2014")}</div>
+      </div>
+      <span class="icon icon-sm">${iconSvg("arrowRight")}</span>
+    </div>` : "";
+
+  const step = (state, title, text) => `
+    <li class="nd-step nd-step-${state}"><span class="nd-step-dot"></span><div><b>${title}</b><div class="muted-small">${text}</div></div></li>`;
+  const timeline = issue ? `
+    <div class="card nd-side-card">
+      <h3>Where this entry is</h3>
+      <ol class="nd-steps">
+        ${step("done", "Capture", `Submitted by ${escapeHtml(issue.createdBy || "\u2014")} \u00b7 ${escapeHtml(formatDate(issue.createdAt))}`)}
+        ${step(decided ? "done" : "current", "Review", decided ? `Reviewed by ${escapeHtml(issue.updatedBy || "a reviewer")}` : "Waiting for a reviewer")}
+        ${step(decided ? "done" : "todo", "Validate", solved ? "Validated" : cancelled ? "Not accepted" : "After the review is approved")}
+        ${step(solved ? "done" : "todo", "Trusted knowledge", solved ? "Published to the knowledge base" : "Published once validated")}
+      </ol>
+    </div>` : "";
+
+  root.innerHTML = `
+    <div class="nd-grid">
+      <div class="card nd-main">
+        <div class="nd-head">
+          <span class="notif-pill ${meta.pillClass}">${meta.label}</span>
+          <span class="nd-time">${escapeHtml(receivedText)}</span>
+          <span class="nd-read-chip ${read ? "" : "nd-unread"}">${read ? "Read" : "Unread"}</span>
+        </div>
+        <h2 class="nd-title">${escapeHtml(item.title)}</h2>
+        <p class="nd-message">${item.body}</p>
+        ${relatedCard}
+        <div class="nd-actions">
+          ${item.actionLabel && item.onClick ? `<button type="button" class="btn btn-primary" id="ndPrimary">${escapeHtml(item.actionLabel)} <span class="icon icon-white icon-sm">${iconSvg("arrowRight")}</span></button>` : ""}
+          <button type="button" class="btn btn-secondary" id="ndToggleRead">${read ? "Mark as unread" : "Mark as read"}</button>
+          <button type="button" class="btn btn-secondary nd-delete" id="ndDelete">Delete notification</button>
+        </div>
+      </div>
+      <div class="nd-side">
+        ${timeline}
+        <div class="card nd-side-card">
+          <h3>About this notification</h3>
+          <dl class="nd-about">
+            <dt>Type</dt><dd>${meta.label} \u00b7 ${escapeHtml(item.title)}</dd>
+            <dt>Received</dt><dd>${escapeHtml(receivedText)}</dd>
+            <dt>Delivered</dt><dd>In-app</dd>
+            <dt>Why you got this</dt><dd>${NOTIF_WHY[item.cat] || ""}</dd>
+          </dl>
+          <a class="nd-prefs-link" id="ndPrefs">Manage notification preferences</a>
+        </div>
+      </div>
+    </div>`;
+
+  const back = () => showView("notifications");
+  const primary = document.getElementById("ndPrimary");
+  if(primary) primary.addEventListener("click", () => { item.onClick(); });
+  document.getElementById("ndToggleRead").addEventListener("click", () => {
+    setNotifRead([item], !isNotifRead(item)); refreshNotifBadgesOnly(); renderNotificationDetail();
+  });
+  document.getElementById("ndDelete").addEventListener("click", () => { deleteNotif(item); refreshNotifBadgesOnly(); back(); });
+  document.getElementById("ndPrefs").addEventListener("click", () => { showView("my-account"); setAccountTab("notifications"); });
+  const entry = root.querySelector("[data-nd-entry]");
+  if(entry) entry.addEventListener("click", () => openDetail(item.ref));
+}
+
 let _notifReadFilter = "all";
 function renderNotifPageGrouped(category){
   const list = document.getElementById("notifPageList");
@@ -2093,7 +2207,8 @@ function renderNotifPageGrouped(category){
             <button type="button" class="notif-more" aria-label="More actions" data-more="${idx}"><span class="icon icon-sm">${iconSvg("dots")}</span></button>
             <div class="notif-menu" data-menu="${idx}" hidden>
               <button type="button" data-toggle-read="${idx}">${read ? "Mark as unread" : "Mark as read"}</button>
-              ${item.onClick ? `<button type="button" data-open="${idx}">Open details</button>` : ""}
+              <button type="button" data-open="${idx}">Open details</button>
+              <button type="button" class="notif-menu-danger" data-delete="${idx}">Delete notification</button>
             </div>
           </span>
         </div>
@@ -2119,8 +2234,15 @@ function renderNotifPageGrouped(category){
   }));
   list.querySelectorAll("[data-open]").forEach(btn => btn.addEventListener("click", e => {
     e.stopPropagation();
-    const item = items[Number(btn.dataset.open)];
-    setNotifRead([item], true); if(item.onClick) item.onClick(); rerender();
+    openNotificationDetail(items[Number(btn.dataset.open)]);
+  }));
+  list.querySelectorAll("[data-delete]").forEach(btn => btn.addEventListener("click", e => {
+    e.stopPropagation();
+    deleteNotif(items[Number(btn.dataset.delete)]); rerender();
+  }));
+  list.querySelectorAll(".notif-page-row").forEach(row => row.addEventListener("click", e => {
+    if(e.target.closest(".notif-page-actions")) return;
+    openNotificationDetail(items[Number(row.dataset.row)]);
   }));
 }
 document.addEventListener("click", () => document.querySelectorAll(".notif-menu").forEach(m => m.hidden = true));
