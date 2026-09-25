@@ -1161,7 +1161,7 @@ function deleteDraft(){ try { localStorage.removeItem(draftKeyFor()); } catch(e)
 
 function showCaptureTypeStep(){
   document.getElementById("captureTypeScreen").style.display = "";
-  document.getElementById("captureFormScreen").style.display = "none";
+  Object.values(CAPTURE_SCREENS).forEach(id => { document.getElementById(id).style.display = "none"; });
   const draft = loadDraft();
   const card = document.getElementById("captureDraftCard");
   if(draft){
@@ -1303,6 +1303,7 @@ async function submitIssue(status){
     deleteDraft();
     showToast("Knowledge captured", `"${result.title}" was submitted as ${result.id} -- pending review.`);
     showCaptureTypeStep();
+    showView("my-entries");
     refreshDashboard();
   } finally {
     btn.disabled = false;
@@ -1345,6 +1346,7 @@ async function submitInformation(){
     await clearInfoForm();
     showToast("Knowledge captured", `"${result.title}" was submitted as ${result.id} -- pending review.`);
     showCaptureTypeStep();
+    showView("my-entries");
     refreshDashboard();
   } finally {
     btn.disabled = false;
@@ -1392,6 +1394,7 @@ async function submitProcedure(){
     await clearProcForm();
     showToast("Knowledge captured", `"${result.title}" was submitted as ${result.id} -- pending review.`);
     showCaptureTypeStep();
+    showView("my-entries");
     refreshDashboard();
   } finally {
     btn.disabled = false;
