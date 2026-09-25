@@ -630,6 +630,8 @@ function renderNotificationPopover(containerId, category){
   });
   const viewAllBtn = pop.querySelector(".notif-pop-viewall");
   if(viewAllBtn) viewAllBtn.addEventListener("click", () => { close(); showView("notifications"); });
+  const gear = pop.querySelector(".notif-pop-gear");
+  if(gear){ gear.style.cursor = "pointer"; gear.addEventListener("click", () => { close(); showView("my-account"); setAccountTab("preferences"); }); }
   const markAll = pop.querySelector("[data-pop-markall]");
   if(markAll) markAll.addEventListener("click", e => { e.stopPropagation(); setNotifRead(buildNotifItems("all"), true); refreshNotifBadgesOnly(); renderNotificationPopover(containerId, category); });
   pop.querySelectorAll("[data-nav-icon]").forEach(el => { el.innerHTML = iconSvg(el.dataset.navIcon); });
@@ -1632,19 +1634,16 @@ function renderMyEntriesTable(){
   body.innerHTML = rows.map(i => {
     if(i.__isDraft){
       return `
-      <tr class="data-row">
-        <td>
-          <div class="entry-cell">
-            <span class="entry-type-icon">${iconSvg("edit")}</span>
-            <div><b>${escapeHtml(i.title)}</b><span class="muted-small">Saved on this device only</span></div>
+      <tr class="data-row row-list"><td colspan="6">
+        <div class="entry-row">
+          <span class="entry-tile">${iconSvg("edit")}</span>
+          <div class="entry-main">
+            <div class="entry-title-line"><b class="entry-title">${escapeHtml(i.title)}</b><span class="status st-draft">Draft</span></div>
+            <div class="entry-meta">Saved on this device only${i.updatedAt ? ` <span class="notif-sep">\u00b7</span> ${formatDate(i.updatedAt)}` : ""}</div>
           </div>
-        </td>
-        <td><span class="type-badge"><span class="icon icon-sm" data-nav-icon="edit"></span> Problem / Solution</span></td>
-        <td><span class="status st-draft">Draft</span></td>
-        <td><span class="muted-small">—</span></td>
-        <td class="muted-small">${i.updatedAt ? formatDate(i.updatedAt) : "—"}</td>
-        <td><button type="button" class="btn btn-outline btn-sm" data-continue-draft="1">Continue</button></td>
-      </tr>`;
+          <div class="entry-actions"><button type="button" class="notif-page-action" data-continue-draft="1">Continue <span class="icon icon-sm">${iconSvg("arrowRight")}</span></button></div>
+        </div>
+      </td></tr>`;
     }
     const bucket = _myEntriesBuckets.get(i);
     const reviewer = (i.status === "solved" || i.status === "cancelled") && i.updatedBy && i.updatedBy !== i.createdBy
@@ -1654,19 +1653,16 @@ function renderMyEntriesTable(){
       : `<span class="status ${statusClass(i.status)}">${statusLabel(i.status)}</span>`;
     const tMeta = typeBadgeInfo(i.type);
     return `
-    <tr data-id="${escapeAttr(i.id)}" class="data-row">
-      <td>
-        <div class="entry-cell">
-          ${typeGlyphHtml(i.type, "entry-type-icon")}
-          <div><b>${escapeHtml(i.title)}</b><span class="mono muted-small">${escapeHtml(i.id)}</span></div>
+    <tr data-id="${escapeAttr(i.id)}" class="data-row row-list"><td colspan="6">
+      <div class="entry-row">
+        ${typeGlyphHtml(i.type, "entry-tile")}
+        <div class="entry-main">
+          <div class="entry-title-line"><b class="entry-title">${escapeHtml(i.title)}</b>${statusHtml}</div>
+          <div class="entry-meta">${escapeHtml(tMeta.label)} <span class="notif-sep">\u00b7</span> <span class="mono">${escapeHtml(i.id)}</span> <span class="notif-sep">\u00b7</span> ${reviewer} <span class="notif-sep">\u00b7</span> ${formatDate(i.updatedAt || i.createdAt)}</div>
         </div>
-      </td>
-      <td><span class="type-badge">${typeGlyphHtml(i.type, "type-glyph-sm")} ${escapeHtml(tMeta.label)}</span></td>
-      <td>${statusHtml}</td>
-      <td>${reviewer}</td>
-      <td class="muted-small">${formatDate(i.updatedAt || i.createdAt)}</td>
-      <td><button type="button" class="btn btn-outline btn-sm" data-open="${escapeAttr(i.id)}">View</button></td>
-    </tr>`;
+        <div class="entry-actions"><button type="button" class="notif-page-action" data-open="${escapeAttr(i.id)}">View <span class="icon icon-sm">${iconSvg("arrowRight")}</span></button></div>
+      </div>
+    </td></tr>`;
   }).join("");
   body.querySelectorAll("[data-nav-icon]").forEach(el => { el.innerHTML = iconSvg(el.dataset.navIcon); });
   body.querySelectorAll("[data-open]").forEach(btn => btn.addEventListener("click", () => openDetail(btn.getAttribute("data-open"))));
@@ -1855,21 +1851,18 @@ function renderReviewQueueTab(){
     const btnLabel = beingReviewed ? "Continue" : "Review";
     const tMeta = typeBadgeInfo(i.type);
     return `
-    <tr class="data-row" data-id="${escapeAttr(i.id)}">
-      <td>
-        <div class="entry-cell">
-          ${typeGlyphHtml(i.type, "entry-type-icon")}
-          <div><b>${escapeHtml(i.title)}</b><span class="mono muted-small">${escapeHtml(i.id)}</span></div>
+    <tr class="data-row row-list" data-id="${escapeAttr(i.id)}"><td colspan="6">
+      <div class="entry-row">
+        ${typeGlyphHtml(i.type, "entry-tile")}
+        <div class="entry-main">
+          <div class="entry-title-line"><b class="entry-title">${escapeHtml(i.title)}</b><span class="status ${statusCls}">${status}</span></div>
+          <div class="entry-meta">${escapeHtml(i.createdBy || "\u2014")} <span class="notif-sep">\u00b7</span> ${escapeHtml(i.system || tMeta.label)} <span class="notif-sep">\u00b7</span> <span class="mono">${escapeHtml(i.id)}</span> <span class="notif-sep">\u00b7</span> ${formatDate(i.createdAt)}</div>
         </div>
-      </td>
-      <td>${escapeHtml(i.createdBy || "—")}</td>
-      <td>${escapeHtml(i.system || "—")}</td>
-      <td class="muted-small">${formatDate(i.createdAt)}</td>
-      <td><span class="status ${statusCls}">${status}</span></td>
-      <td>${_rqTab === "decided"
-        ? `<button type="button" class="btn btn-outline btn-sm" data-open="${escapeAttr(i.id)}">View</button>`
-        : `<button type="button" class="btn btn-primary btn-sm" data-open="${escapeAttr(i.id)}">${btnLabel}</button>`}</td>
-    </tr>`;
+        <div class="entry-actions">${_rqTab === "decided"
+          ? `<button type="button" class="notif-page-action" data-open="${escapeAttr(i.id)}">View <span class="icon icon-sm">${iconSvg("arrowRight")}</span></button>`
+          : `<button type="button" class="notif-page-action notif-page-action-primary" data-open="${escapeAttr(i.id)}">${btnLabel} <span class="icon icon-sm">${iconSvg("arrowRight")}</span></button>`}</div>
+      </div>
+    </td></tr>`;
   }).join("");
   body.querySelectorAll("[data-open]").forEach(btn => btn.addEventListener("click", () => openDetail(btn.getAttribute("data-open"))));
 }

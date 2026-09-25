@@ -940,3 +940,68 @@ body[data-density="compact"] .card{padding:18px;}
 .notif-menu button{display:block;width:100%;text-align:left;border:none;background:none;padding:10px 12px;border-radius:8px;font-size:14px;font-weight:600;color:var(--ink);cursor:pointer;font-family:inherit;}
 .notif-menu button:hover{background:var(--bg);}
 #notifPopover{right:-188px;}
+
+/* ---------- shell: match reference (canvas, sidebar, topbar, radii, account tabs) ---------- */
+:root{--bg:#eef1f6;--border:#e3e8f0;--radius-lg:20px;--radius-xl:24px;}
+body{background:var(--bg);background-attachment:scroll;}
+.app-sidebar{width:272px;padding:20px 16px;}
+.side-brand{padding:4px 10px 24px;gap:12px;}
+.side-brand .brand-mark{width:42px;height:42px;border-radius:12px;}
+.side-brand .brand-title{font-size:18px;}
+.side-brand .brand-tag{font-size:12px;}
+.side-nav{gap:20px;}
+.side-section{gap:4px;}
+.side-label{font-size:11.5px;letter-spacing:.09em;padding:6px 12px 6px;}
+.side-link{padding:11px 12px;font-size:15.5px;font-weight:500;gap:12px;border-radius:12px;color:var(--ink);}
+.side-link .icon{width:19px;height:19px;}
+.side-link.active{font-weight:700;}
+.side-link:hover{background:var(--blue-50);}
+.side-badge{min-width:22px;height:22px;padding:0 6px;font-size:12px;display:inline-flex;align-items:center;justify-content:center;background:var(--blue);color:#fff;}
+#sideBadgeReview{background:#e6eaf2;color:var(--ink);}
+.side-soon-badge{font-size:12px;padding:3px 10px 3px 8px;}
+.side-bottom{padding-top:12px;margin-top:12px;}
+.topbar{padding:16px 36px;background:#fff;-webkit-backdrop-filter:none;backdrop-filter:none;border-bottom:1px solid var(--border);}
+.topbar-crumb{font-size:16px;font-weight:600;gap:10px;}
+.crumb-section{font-weight:500;}
+.crumb-current{font-weight:700;}
+.crumb-sep{color:var(--muted);opacity:.5;}
+.account-text b{font-size:14px;}
+.account-text span{font-size:12.5px;}
+.icon-btn{width:42px;height:42px;}
+.card{border-color:var(--border);}
+
+.account-cols{grid-template-columns:1fr;gap:0;}
+.account-tabs{position:static;flex-direction:row;gap:6px;padding:0;background:none;border:none;border-bottom:1px solid var(--border);box-shadow:none;border-radius:0;margin-bottom:24px;}
+.account-tabs .side-link{width:auto;border-radius:0;padding:12px 18px;font-size:15px;font-weight:600;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px;background:none;}
+.account-tabs .side-link .icon{display:none;}
+.account-tabs .side-link:hover{background:none;color:var(--ink);}
+.account-tabs .side-link.active{color:var(--blue-dark);border-bottom-color:var(--blue);background:none;font-weight:700;}
+.side-badge[hidden]{display:none;}
+.side-label{text-align:left;}
+.side-link{justify-content:flex-start;text-align:left;}
+.side-link > .icon{width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;flex:0 0 20px;}
+.side-link > .icon svg{width:19px;height:19px;}
+.side-nav{align-items:stretch;} .side-section{width:100%;}
+
+/* ---------- entry rows (My Entries, Review Queue): reference row layout ---------- */
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;}
+.data-row.row-list > td{padding:0;border-bottom:1px solid var(--border);}
+.data-row.row-list:last-child > td{border-bottom:none;}
+.entry-row{display:flex;align-items:center;gap:16px;padding:18px 24px;}
+.entry-row:hover{background:var(--bg);}
+.entry-tile{width:42px;height:42px;border-radius:12px;background:var(--blue-50);color:var(--blue);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;}
+.entry-tile svg{width:18px;height:18px;}
+.entry-tile.type-glyph{width:42px;height:42px;border-radius:12px;font-size:18px;}
+.entry-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px;}
+.entry-title-line{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.entry-title{font-size:15.5px;font-weight:700;color:var(--ink);}
+.entry-meta{font-size:13.5px;color:var(--muted);}
+.entry-meta .mono{font-size:12.5px;}
+.entry-actions{flex-shrink:0;margin-left:auto;}
+.notif-page-action-primary{background:var(--blue);border-color:var(--blue);color:#fff;}
+.notif-page-action-primary:hover{background:var(--blue-dark);}
+.table-card .data-table{display:block;}
+.table-card .data-table tbody{display:block;}
+.table-card .data-table tr.data-row{display:block;}
+.table-card .data-table tr.data-row > td{display:block;}
+.side-link-locked:hover,.side-link-locked.active:hover{background:none;}
