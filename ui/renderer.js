@@ -2573,8 +2573,6 @@ function wireEvents(){
   });
   document.addEventListener("click", () => notifPop.classList.remove("open"));
 
-  document.getElementById("loginServerSave").addEventListener("click", saveServerAddress);
-  document.getElementById("loginServerInput").addEventListener("keydown", e => { if(e.key === "Enter"){ e.preventDefault(); saveServerAddress(); } });
   document.getElementById("cpRequestBtn").addEventListener("click", submitPasswordChangeRequest);
 
   document.getElementById("confirmCancelBtn").addEventListener("click", () => _closeConfirmDialog(false));
@@ -2753,6 +2751,8 @@ async function init(){
   document.querySelectorAll("[data-nav-icon]").forEach(el => { el.innerHTML = iconSvg(el.dataset.navIcon); });
 
   document.getElementById("loginSubmitBtn").addEventListener("click", attemptLogin);
+  document.getElementById("loginServerSave").addEventListener("click", saveServerAddress);
+  document.getElementById("loginServerInput").addEventListener("keydown", e => { if(e.key === "Enter"){ e.preventDefault(); saveServerAddress(); } });
   document.getElementById("loginPassword").addEventListener("keydown", e => {
     if(e.key === "Enter"){ e.preventDefault(); attemptLogin(); }
   });
