@@ -382,7 +382,10 @@ class IssueStore:
         return self._row_to_issue(row) if row else None
 
     def attachments_dir(self, issue_id: str) -> Path:
-        d = self.db_path.parent / "attachments" / issue_id
+        base = (self.db_path.parent / "attachments").resolve()
+        d = (base / issue_id).resolve()
+        if d.parent != base:
+            raise ValueError("Invalid issue id.")
         d.mkdir(parents=True, exist_ok=True)
         return d
 
@@ -731,7 +734,15 @@ class IssueStore:
             self.conn.commit()
 
     def list_notifications(self, username: str) -> dict:
+        with self._lock:
+            known = self.conn.execute(
+                "SELECT 1 FROM notification_state WHERE username = ?", (username,)
+            ).fetchone() is not None
         last_seen = self._get_or_init_last_seen(username)
+        # Baselining to "now" on a user's very first check is right for the
+        # shared feed (no flood of old entries) but wrong for items addressed
+        # to this user personally -- those must never be swallowed.
+        personal_since = last_seen if known else ""
         with self._lock:
             new_issues = self.conn.execute(
                 "SELECT id, title, created_by, created_at FROM issues "
@@ -742,12 +753,12 @@ class IssueStore:
                 "SELECT id, status, reviewed_at FROM password_requests "
                 "WHERE username = ? AND status != 'pending' AND reviewed_at > ? "
                 "ORDER BY reviewed_at DESC",
-                (username, last_seen),
+                (username, personal_since),
             ).fetchall()
             direct = self.conn.execute(
                 "SELECT id, message, issue_id, created_at FROM notifications "
                 "WHERE username = ? AND created_at > ? ORDER BY created_at DESC",
-                (username, last_seen),
+                (username, personal_since),
             ).fetchall()
         return {
             "lastSeenAt": last_seen,

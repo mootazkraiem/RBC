@@ -23,6 +23,7 @@ Run:
 """
 
 import os
+import re
 from pathlib import Path
 from typing import Optional
 
@@ -240,7 +241,20 @@ class IssueIn(BaseModel):
     additionalInfo: str = ""
 
 
+MAX_TITLE_LEN = 300
+MAX_TEXT_LEN = 20000
+MAX_STEPS = 200
+
+
 def _validate_issue(issue: IssueIn) -> Optional[str]:
+    if len(issue.title) > MAX_TITLE_LEN:
+        return f"Title is too long (max {MAX_TITLE_LEN} characters)."
+    for field in ("problem", "root", "solution", "topic", "description", "context",
+                  "purpose", "prerequisites", "warnings", "additionalInfo", "error"):
+        if len(getattr(issue, field)) > MAX_TEXT_LEN:
+            return f"'{field}' is too long (max {MAX_TEXT_LEN} characters)."
+    if len(issue.steps) > MAX_STEPS:
+        return f"Too many steps (max {MAX_STEPS})."
     if issue.type not in ENTRY_TYPES:
         return f"Invalid type '{issue.type}'. Must be one of: {', '.join(ENTRY_TYPES)}."
     if issue.type == "PROBLEM_SOLUTION":
@@ -385,10 +399,36 @@ def delete_application(name: str, user: str = Depends(get_current_admin)):
     return store.delete_application(name, user)
 
 
+
+_ISSUE_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
+
+
+def _require_issue_id(issue_id: str) -> None:
+    """Issue ids become directory names on disk. Anything that isn't a plain
+    id (e.g. '..' smuggled in as %2e%2e) would let a signed-in user read the
+    server's database or signing key through the attachment endpoints."""
+    if not _ISSUE_ID_RE.match(issue_id or ""):
+        raise HTTPException(status_code=404, detail=f"No issue found with id {issue_id}.")
+
+
+def _require_attachment_edit_rights(issue_id: str, user: str) -> None:
+    """Attachments are part of an entry's content, so the same solved-lock
+    that guards edits applies: only an admin may change a solved entry."""
+    current = store.get_issue(issue_id)
+    if current is None:
+        raise HTTPException(status_code=404, detail=f"No issue found with id {issue_id}.")
+    if current["status"] == "solved" and _user_role(user) not in ("admin", "super_admin"):
+        raise HTTPException(
+            status_code=403,
+            detail="This issue is marked Solved -- only an admin can change its attachments.",
+        )
+
 # ------------------------------------------------------------- attachments
 @app.post("/issues/{issue_id}/attachments")
 async def add_attachment(issue_id: str, kind: str, file: UploadFile = File(...),
                           user: str = Depends(get_current_user)):
+    _require_issue_id(issue_id)
+    _require_attachment_edit_rights(issue_id, user)
     data = await file.read()
     MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024
     if len(data) > MAX_ATTACHMENT_BYTES:
@@ -401,6 +441,7 @@ async def add_attachment(issue_id: str, kind: str, file: UploadFile = File(...),
 
 @app.get("/issues/{issue_id}/attachments/{name}")
 def download_attachment(issue_id: str, name: str, user: str = Depends(get_current_user)):
+    _require_issue_id(issue_id)
     data = store.read_attachment(issue_id, name)
     if data is None:
         raise HTTPException(status_code=404, detail="That attachment no longer exists on the server.")
@@ -410,6 +451,8 @@ def download_attachment(issue_id: str, name: str, user: str = Depends(get_curren
 
 @app.delete("/issues/{issue_id}/attachments/{name}")
 def remove_attachment(issue_id: str, name: str, user: str = Depends(get_current_user)):
+    _require_issue_id(issue_id)
+    _require_attachment_edit_rights(issue_id, user)
     updated = store.remove_attachment(issue_id, name, user)
     if updated is None:
         raise HTTPException(status_code=404, detail=f"No issue found with id {issue_id}.")
